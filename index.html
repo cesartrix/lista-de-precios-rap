@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buscador de Precios por Proveedor y Marca</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -12,63 +12,67 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
 
-    <div class="container mx-auto max-w-7xl p-6">
-        <div class="w-full flex justify-center mb-6 bg-white p-4 rounded-xl shadow-xs border border-gray-200">
-            <img id="logoBanner" src="https://i.postimg.cc/MnxJSvgf/image-dda983.jpg" alt="Logos Institucionales" class="max-h-24 object-contain" crossorigin="anonymous">
+    <div class="container mx-auto max-w-7xl p-3 md:p-6">
+        <div class="w-full flex justify-center mb-4 md:mb-6 bg-white p-3 md:p-4 rounded-xl shadow-xs border border-gray-200">
+            <img id="logoBanner" src="https://i.postimg.cc/MnxJSvgf/image-dda983.jpg" alt="Logos Institucionales" class="max-h-16 md:max-h-24 object-contain" crossorigin="anonymous">
         </div>
 
-        <header class="mb-8 text-center md:text-left flex flex-col lg:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-blue-900">Catálogo de Precios por Marca</h1>
-                <p class="text-gray-600 mt-2">Filtre, busque en tiempo real, descargue o comparta reportes directamente a WhatsApp.</p>
+        <header class="mb-6 md:mb-8 text-center md:text-left flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div class="w-full">
+                <h1 class="text-2xl md:text-3xl font-bold text-blue-900 leading-tight">Catálogo de Precios</h1>
+                <p class="text-sm md:text-base text-gray-600 mt-1 md:mt-2">Filtre, busque y comparta reportes a WhatsApp.</p>
             </div>
             
-            <div id="exportButtonsContainer" class="flex flex-wrap gap-2 justify-center opacity-50 pointer-events-none transition-opacity duration-300">
-                <button id="btnExportExcel" class="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-3 rounded-lg shadow-sm cursor-pointer text-xs transition-colors">
+            <div id="exportButtonsContainer" class="w-full lg:w-auto grid grid-cols-2 md:flex md:flex-wrap gap-2 opacity-50 pointer-events-none transition-opacity duration-300">
+                <button id="btnExportExcel" class="w-full flex justify-center items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 px-3 rounded-lg shadow-sm cursor-pointer text-xs md:text-sm transition-colors active:scale-95">
                     Descargar Excel
                 </button>
-                <button id="btnExportPdf" class="flex items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white font-semibold py-2 px-3 rounded-lg shadow-sm cursor-pointer text-xs transition-colors">
+                <button id="btnExportPdf" class="w-full flex justify-center items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white font-semibold py-2.5 px-3 rounded-lg shadow-sm cursor-pointer text-xs md:text-sm transition-colors active:scale-95">
                     Descargar PDF
                 </button>
                 
-                <button id="btnShareExcel" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-lg shadow-sm cursor-pointer text-xs transition-colors">
+                <button id="btnShareExcel" class="w-full flex justify-center items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-3 rounded-lg shadow-sm cursor-pointer text-xs md:text-sm transition-colors active:scale-95">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 10.742l4.632-2.316m0 0a3 3 0 102.684-2.684 3 3 0 00-2.684 2.684zm-4.632 2.316m0 0a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0 0L13.316 15.316"></path></svg>
-                    Compartir Excel
+                    Enviar Excel
                 </button>
-                <button id="btnSharePdf" class="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-3 rounded-lg shadow-sm cursor-pointer text-xs transition-colors">
+                <button id="btnSharePdf" class="w-full flex justify-center items-center gap-1 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2.5 px-3 rounded-lg shadow-sm cursor-pointer text-xs md:text-sm transition-colors active:scale-95">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 10.742l4.632-2.316m0 0a3 3 0 102.684-2.684 3 3 0 00-2.684 2.684zm-4.632 2.316m0 0a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0 0L13.316 15.316"></path></svg>
-                    Compartir PDF
+                    Enviar PDF
                 </button>
             </div>
         </header>
 
-        <div class="bg-white p-6 rounded-xl shadow-xs border border-gray-200 mb-6 flex flex-col md:flex-row gap-4">
+        <div class="bg-white p-4 md:p-6 rounded-xl shadow-xs border border-gray-200 mb-4 md:mb-6 flex flex-col md:flex-row gap-4">
             <div class="w-full md:w-1/3">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Filtrar por Proveedor:</label>
-                <select id="proveedorSelect" class="w-full bg-white border border-gray-300 text-gray-700 py-2.5 px-4 rounded-lg focus:outline-none">
+                <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">Filtrar por Proveedor:</label>
+                <select id="proveedorSelect" class="w-full bg-white border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none">
                     <option value="">Cargando proveedores...</option>
                 </select>
             </div>
             <div class="w-full md:w-2/3">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Buscar Artículo:</label>
-                <input type="text" id="txtBuscar" placeholder="Busca por código, marca, descripción..." class="w-full bg-white border border-gray-300 text-gray-700 py-2.5 px-4 rounded-lg focus:outline-none" />
+                <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">Buscar Artículo:</label>
+                <input type="text" id="txtBuscar" placeholder="Ej: Código, marca, descripción..." class="w-full bg-white border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
             </div>
+        </div>
+
+        <div class="md:hidden text-right text-xs text-blue-600 font-medium mb-2 animate-pulse">
+            👉 Deslizá la tabla para ver más
         </div>
 
         <div class="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-                <table id="tablaArticulos" class="w-full text-left border-collapse">
+                <table id="tablaArticulos" class="w-full text-left border-collapse min-w-[700px]">
                     <thead>
-                        <tr class="bg-blue-900 text-white text-sm font-semibold uppercase tracking-wider">
-                            <th class="py-3 px-6">Código Art.</th>
-                            <th class="py-3 px-6">Cod. Barra</th>
-                            <th class="py-3 px-6">Descripción del Artículo</th>
-                            <th class="py-3 px-6 text-center">Cant. (Unidades)</th>
-                            <th class="py-3 px-6 text-right">Precio Final</th>
-                            <th class="py-3 px-6 text-right">Precio Final Unitario</th>
+                        <tr class="bg-blue-900 text-white text-xs md:text-sm font-semibold uppercase tracking-wider">
+                            <th class="py-3 px-4 md:px-6">Código</th>
+                            <th class="py-3 px-4 md:px-6">Cod. Barra</th>
+                            <th class="py-3 px-4 md:px-6">Descripción</th>
+                            <th class="py-3 px-4 md:px-6 text-center">Unidades</th>
+                            <th class="py-3 px-4 md:px-6 text-right">P. Final</th>
+                            <th class="py-3 px-4 md:px-6 text-right">P. Unitario</th>
                         </tr>
                     </thead>
-                    <tbody id="resultadosBody" class="divide-y divide-gray-200 text-gray-700 text-sm">
+                    <tbody id="resultadosBody" class="divide-y divide-gray-200 text-gray-700 text-xs md:text-sm">
                         <tr>
                             <td colspan="6" class="py-8 text-center text-gray-500 italic">Conectando con Google Sheets y descargando datos...</td>
                         </tr>
@@ -79,13 +83,11 @@
     </div>
 
     <script>
-        // ENLACE CORREGIDO PARA DESCARGAR EN FORMATO CSV
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoUumCa0LO8l-KaiRrPGdqRN9KI4UG8Z2GV1NM-lKX8oTWRGqSdubUzo8DilXi3dqu4iDX762qpnL5/pub?output=csv"; 
         
         let datosCompletos = [];
         let datosFiltrados = [];
 
-        // Al iniciar la página, se conecta al Google Sheet
         window.addEventListener('DOMContentLoaded', () => {
             cargarDatosDesdeGoogleSheets();
         });
@@ -93,7 +95,7 @@
         function cargarDatosDesdeGoogleSheets() {
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true,
-                header: false, // Ahora leemos como matriz pura (arrays) para encontrar la cabecera real
+                header: false, 
                 complete: function(results) {
                     const dataMatrix = results.data;
                     
@@ -102,26 +104,22 @@
                         return;
                     }
 
-                    // Buscar la fila de encabezados
                     let headerIndex = -1;
                     let headers = [];
                     for (let i = 0; i < dataMatrix.length; i++) {
                         const row = dataMatrix[i];
-                        // Buscamos una fila que tenga la palabra 'Artículo' o 'Articulo'
                         if (row.some(cell => typeof cell === 'string' && cell.trim().toLowerCase().includes('artículo'))) {
                             headerIndex = i;
-                            // Limpiamos los nombres de los encabezados (quitamos espacios extra)
                             headers = row.map(cell => typeof cell === 'string' ? cell.trim() : cell);
                             break;
                         }
                     }
 
                     if (headerIndex === -1) {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se encontró la fila de títulos (debe contener 'Artículo'). Revisá tu Google Sheet.</td></tr>`;
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se encontró la fila de títulos.</td></tr>`;
                         return;
                     }
 
-                    // Encontramos los índices de las columnas importantes usando un sistema más flexible
                     const idxArticulo = headers.findIndex(h => h.toLowerCase().includes('artículo'));
                     const idxCodBarra = headers.findIndex(h => h.toLowerCase().includes('cod.barra') || h.toLowerCase().includes('código barras'));
                     const idxUnidades = headers.findIndex(h => h.toLowerCase().includes('unidades'));
@@ -130,10 +128,8 @@
                     const idxProveedor = headers.findIndex(h => h.toLowerCase().includes('atributo 1'));
                     const idxMarca = headers.findIndex(h => h.toLowerCase().includes('atributo 2'));
                     
-                    // Buscar la descripción (generalmente la segunda 'Descripción' o 'Descripción_1')
                     let idxDescripcionArticulo = headers.findIndex(h => h === 'Descripción_1');
                     if (idxDescripcionArticulo === -1) {
-                         // Si no hay Descripción_1, buscamos la segunda aparición de 'Descripción'
                          let count = 0;
                          for (let i = 0; i < headers.length; i++) {
                              if (headers[i].toLowerCase() === 'descripción' || headers[i].toLowerCase() === 'descripcion') {
@@ -145,40 +141,25 @@
                              }
                          }
                     }
-                    // Respaldo final si no encuentra dos descripciones
                     if (idxDescripcionArticulo === -1) {
                         idxDescripcionArticulo = headers.findIndex(h => h.toLowerCase() === 'descripción' || h.toLowerCase() === 'descripcion');
                     }
 
-                    // Procesar los datos (desde la fila siguiente al encabezado)
                     for (let i = headerIndex + 1; i < dataMatrix.length; i++) {
                         const row = dataMatrix[i];
-                        
-                        // Si la fila está vacía o no tiene el código de artículo, la salteamos
-                        if (!row || row.length === 0 || !row[idxArticulo] || row[idxArticulo].toString().trim() === "") {
-                            continue;
-                        }
+                        if (!row || row.length === 0 || !row[idxArticulo] || row[idxArticulo].toString().trim() === "") continue;
 
                         let marcaCelda = row[idxMarca] !== undefined ? row[idxMarca].toString().trim() : '';
                         if (marcaCelda === "") marcaCelda = "GENERAL";
 
-                        // Extraer valores con cuidado
-                        const valArticulo = row[idxArticulo];
-                        const valCodBarra = row[idxCodBarra];
-                        const valDesc = row[idxDescripcionArticulo];
-                        const valUnidades = row[idxUnidades];
-                        const valPrecioFinal = row[idxPrecioFinal];
-                        const valPrecioUnitario = row[idxPrecioUnitario];
-                        const valProveedor = row[idxProveedor];
-
                         datosCompletos.push({
-                            'Artículo': valArticulo ? valArticulo.toString().trim() : '',
-                            'Cod.Barra': valCodBarra ? valCodBarra.toString().trim() : '-',
-                            'Descripcion_Articulo': valDesc ? valDesc.toString().trim() : 'Sin descripción',
-                            'Unidades': !isNaN(parseFloat(valUnidades)) ? parseFloat(valUnidades) : 0,
-                            'Precio Final': !isNaN(parseFloat(valPrecioFinal)) ? parseFloat(valPrecioFinal) : 0,
-                            'P.Unitario Final': !isNaN(parseFloat(valPrecioUnitario)) ? parseFloat(valPrecioUnitario) : 0,
-                            'Atributo 1': valProveedor ? valProveedor.toString().trim() : 'SIN PROVEEDOR',
+                            'Artículo': row[idxArticulo] ? row[idxArticulo].toString().trim() : '',
+                            'Cod.Barra': row[idxCodBarra] ? row[idxCodBarra].toString().trim() : '-',
+                            'Descripcion_Articulo': row[idxDescripcionArticulo] ? row[idxDescripcionArticulo].toString().trim() : 'Sin descripción',
+                            'Unidades': !isNaN(parseFloat(row[idxUnidades])) ? parseFloat(row[idxUnidades]) : 0,
+                            'Precio Final': !isNaN(parseFloat(row[idxPrecioFinal])) ? parseFloat(row[idxPrecioFinal]) : 0,
+                            'P.Unitario Final': !isNaN(parseFloat(row[idxPrecioUnitario])) ? parseFloat(row[idxPrecioUnitario]) : 0,
+                            'Atributo 1': row[idxProveedor] ? row[idxProveedor].toString().trim() : 'SIN PROVEEDOR',
                             'Marca': marcaCelda
                         });
                     }
@@ -188,12 +169,11 @@
                         poblarProveedores(datosCompletos);
                         document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
                     } else {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se procesaron productos. Comprobá que las columnas tengan los nombres correctos.</td></tr>`;
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se procesaron productos.</td></tr>`;
                     }
                 },
                 error: function(err) {
-                    console.error("Error al cargar el CSV:", err);
-                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">Error al conectar con Google Sheets. Asegurate de que el archivo esté publicado en la web.</td></tr>`;
+                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">Error de conexión con Google Sheets.</td></tr>`;
                 }
             });
         }
@@ -245,19 +225,19 @@
                     bMarcaActual = prod['Marca'];
                     const filaMarca = document.createElement('tr');
                     filaMarca.className = "bg-slate-100 font-bold border-t border-b border-blue-200 text-blue-900 select-none";
-                    filaMarca.innerHTML = `<td colspan="6" class="py-2.5 px-6 tracking-wide text-xs uppercase">MARCA: ${bMarcaActual}</td>`;
+                    filaMarca.innerHTML = `<td colspan="6" class="py-2.5 px-4 md:px-6 tracking-wide text-[10px] md:text-xs uppercase">MARCA: ${bMarcaActual}</td>`;
                     tbody.appendChild(filaMarca);
                 }
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50 bg-white transition-colors";
                 tr.innerHTML = `
-                    <td class="py-3 px-6 font-mono text-gray-600">${prod['Artículo']}</td>
-                    <td class="py-3 px-6 font-mono text-gray-500">${prod['Cod.Barra']}</td>
-                    <td class="py-3 px-6 font-medium text-gray-900">${prod['Descripcion_Articulo']}</td>
-                    <td class="text-center py-3 px-6 font-semibold text-gray-700">${prod['Unidades']}</td>
-                    <td class="py-3 px-6 text-right font-semibold text-gray-900">${formatearMoneda(prod['Precio Final'])}</td>
-                    <td class="py-3 px-6 text-right text-blue-700 font-semibold">${formatearMoneda(prod['P.Unitario Final'])}</td>
+                    <td class="py-3 px-4 md:px-6 font-mono text-gray-600">${prod['Artículo']}</td>
+                    <td class="py-3 px-4 md:px-6 font-mono text-gray-500">${prod['Cod.Barra']}</td>
+                    <td class="py-3 px-4 md:px-6 font-medium text-gray-900">${prod['Descripcion_Articulo']}</td>
+                    <td class="text-center py-3 px-4 md:px-6 font-semibold text-gray-700">${prod['Unidades']}</td>
+                    <td class="py-3 px-4 md:px-6 text-right font-semibold text-gray-900 whitespace-nowrap">${formatearMoneda(prod['Precio Final'])}</td>
+                    <td class="py-3 px-4 md:px-6 text-right text-blue-700 font-semibold whitespace-nowrap">${formatearMoneda(prod['P.Unitario Final'])}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -269,7 +249,7 @@
             return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(v);
         }
 
-        // --- FUNCIÓN MAESTRA: GENERAR CONTENIDO EXCEL ---
+        // --- FUNCIÓN MAESTRA: GENERAR EXCEL ---
         function generarStringExcel() {
             const prov = document.getElementById('proveedorSelect').value || "Todos los Proveedores";
             const hoy = new Date();
@@ -303,32 +283,20 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 140px;">Marca</th>
-                            <th style="width: 90px;">Código Art.</th>
-                            <th style="width: 120px;">Cod. Barra</th>
-                            <th style="width: 300px;">Descripción del Artículo</th>
-                            <th style="width: 80px;">U. (Cant)</th>
-                            <th style="width: 110px;">Precio Final</th>
-                            <th style="width: 120px;">P. Final Unitario</th>
+                            <th style="width: 140px;">Marca</th><th style="width: 90px;">Código Art.</th><th style="width: 120px;">Cod. Barra</th><th style="width: 300px;">Descripción del Artículo</th><th style="width: 80px;">U. (Cant)</th><th style="width: 110px;">Precio Final</th><th style="width: 120px;">P. Final Unitario</th>
                         </tr>
                     </thead>
                     <tbody>`;
             datosFiltrados.forEach(p => {
                 html += `<tr>
-                    <td class="row-marca">${p['Marca']}</td>
-                    <td class="font-mono text-center">${p['Artículo']}</td>
-                    <td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td>
-                    <td>${p['Descripcion_Articulo']}</td>
-                    <td class="text-center">${p['Unidades']}</td>
-                    <td class="text-right">${formatearMoneda(p['Precio Final'])}</td>
-                    <td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
+                    <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Final'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
                 </tr>`;
             });
             html += `</tbody></table></body></html>`;
             return html;
         }
 
-        // --- FUNCIÓN MAESTRA: GENERAR OBJETO PDF ---
+        // --- FUNCIÓN MAESTRA: GENERAR PDF ---
         function generarDocumentoPdf() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
@@ -355,79 +323,33 @@
             return doc;
         }
 
-        // --- MANEJADORES DE ACCIONES ---
-
-        // Descargar Excel Local
+        // --- ACCIONES DE BOTONES ---
         document.getElementById('btnExportExcel').addEventListener('click', () => {
             if (datosFiltrados.length === 0) return;
-            const content = generarStringExcel();
-            const blob = new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            const blob = new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const a = document.createElement("a");
-            a.href = url;
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            a.setAttribute("download", `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.xls`);
+            a.href = URL.createObjectURL(blob);
+            a.download = `Precios_${(document.getElementById('proveedorSelect').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.xls`;
             a.click();
         });
 
-        // Descargar PDF Local
         document.getElementById('btnExportPdf').addEventListener('click', () => {
             if (datosFiltrados.length === 0) return;
-            const doc = generarDocumentoPdf();
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            doc.save(`Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+            generarDocumentoPdf().save(`Precios_${(document.getElementById('proveedorSelect').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.pdf`);
         });
 
-        // Compartir Excel a WhatsApp / Apps (Solo Android/iOS)
         document.getElementById('btnShareExcel').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
-            if (!navigator.share) {
-                alert("Tu dispositivo o navegador no soporta compartir directamente a aplicaciones.");
-                return;
-            }
-
-            const content = generarStringExcel();
-            const blob = new Blob([content], { type: 'application/vnd.ms-excel' });
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            const nombreArchivo = `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.xls`;
-            
-            const archivo = new File([blob], nombreArchivo, { type: 'application/vnd.ms-excel' });
-
-            try {
-                await navigator.share({
-                    files: [archivo],
-                    title: 'Catálogo de Precios',
-                    text: `Te comparto la lista de precios filtrada del proveedor: ${prov}`
-                });
-            } catch (err) {
-                console.log("Compartir cancelado o con error: ", err);
-            }
+            if (!navigator.share) { alert("Tu dispositivo no soporta compartir nativamente."); return; }
+            const archivo = new File([new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel' })], `Precios_${(document.getElementById('proveedorSelect').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.xls`, { type: 'application/vnd.ms-excel' });
+            try { await navigator.share({ files: [archivo], title: 'Precios', text: 'Catálogo de Precios.' }); } catch (e) {}
         });
 
-        // Compartir PDF a WhatsApp / Apps (Solo Android/iOS)
         document.getElementById('btnSharePdf').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
-            if (!navigator.share) {
-                alert("Tu dispositivo o navegador no soporta compartir directamente a aplicaciones.");
-                return;
-            }
-
-            const doc = generarDocumentoPdf();
-            const pdfBlob = doc.output('blob');
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            const nombreArchivo = `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-
-            const archivo = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
-
-            try {
-                await navigator.share({
-                    files: [archivo],
-                    title: 'Catálogo de Precios PDF',
-                    text: `Te comparto el PDF de precios oficiales del proveedor: ${prov}`
-                });
-            } catch (err) {
-                console.log("Compartir cancelado o con error: ", err);
-            }
+            if (!navigator.share) { alert("Tu dispositivo no soporta compartir nativamente."); return; }
+            const archivo = new File([generarDocumentoPdf().output('blob')], `Precios_${(document.getElementById('proveedorSelect').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.pdf`, { type: 'application/pdf' });
+            try { await navigator.share({ files: [archivo], title: 'Precios PDF', text: 'Catálogo de Precios PDF.' }); } catch (e) {}
         });
     </script>
 </body>
