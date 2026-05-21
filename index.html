@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador de Precios por Proveedor y Marca</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
 
@@ -21,7 +23,7 @@
                 <p class="text-gray-600 mt-2">Filtre, busque en tiempo real, descargue o comparta reportes directamente a WhatsApp.</p>
             </div>
             
-            <div id="exportButtonsContainer" class="flex flex-wrap gap-2 justify-center">
+            <div id="exportButtonsContainer" class="flex flex-wrap gap-2 justify-center opacity-50 pointer-events-none transition-opacity duration-300">
                 <button id="btnExportExcel" class="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-3 rounded-lg shadow-sm cursor-pointer text-xs transition-colors">
                     Descargar Excel
                 </button>
@@ -68,7 +70,7 @@
                     </thead>
                     <tbody id="resultadosBody" class="divide-y divide-gray-200 text-gray-700 text-sm">
                         <tr>
-                            <td colspan="6" class="py-8 text-center text-gray-500 italic">Esperando sincronización de datos...</td>
+                            <td colspan="6" class="py-8 text-center text-gray-500 italic">Cargando datos desde la nube...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -77,19 +79,64 @@
     </div>
 
     <script>
+        // PEGA AQUÍ EL ENLACE CSV QUE OBTUVISTE DE GOOGLE SHEETS
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1Z04LsDjYnu7Gk6UMIYTlQloIskmd5yvhfw0AhoiBE4o/edit?usp=sharing"; 
+        
         let datosCompletos = [];
         let datosFiltrados = [];
 
         window.addEventListener('DOMContentLoaded', () => {
-            const dataGuardada = localStorage.getItem('base_precios_data');
-            if (dataGuardada) {
-                datosCompletos = JSON.parse(dataGuardada);
-                datosFiltrados = [...datosCompletos];
-                poblarProveedores(datosCompletos);
-            } else {
-                document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No hay datos en memoria. Sube primero el Excel en el administrador.</td></tr>`;
-            }
+            cargarDatosDesdeGoogleSheets();
         });
+
+        function cargarDatosDesdeGoogleSheets() {
+            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                download: true,
+                header: true, // Asume que la primera fila son los nombres de las columnas
+                complete: function(results) {
+                    const jsonData = results.data;
+                    
+                    // Filtrar filas vacías y normalizar los nombres de las columnas para que coincidan con tu Excel original
+                    const filasConArticulo = jsonData.filter(row => {
+                        return row['Artículo'] && row['Artículo'].toString().trim() !== "";
+                    });
+
+                    // Verificamos si encontramos la columna descripción
+                    let nombreColumnaDescripcion = 'Descripción';
+                    if(!filasConArticulo[0].hasOwnProperty('Descripción') && filasConArticulo[0].hasOwnProperty('Descripción_1')){
+                        nombreColumnaDescripcion = 'Descripción_1';
+                    }
+
+                    datosCompletos = filasConArticulo.map(row => {
+                        let marcaCelda = row['Atributo 2'] !== undefined ? row['Atributo 2'].toString().trim() : '';
+                        if (marcaCelda === "") marcaCelda = "GENERAL";
+
+                        return {
+                            'Artículo': row['Artículo'] !== undefined ? row['Artículo'] : '',
+                            'Cod.Barra': row['Cod.Barra'] !== undefined ? row['Cod.Barra'] : (row['Código Barras'] || ''),
+                            'Descripcion_Articulo': row[nombreColumnaDescripcion] !== undefined ? row[nombreColumnaDescripcion] : 'Sin descripción',
+                            'Unidades': !isNaN(parseFloat(row['Unidades'])) ? parseFloat(row['Unidades']) : 0,
+                            'Precio Final': !isNaN(parseFloat(row['Precio Final'])) ? parseFloat(row['Precio Final']) : 0,
+                            'P.Unitario Final': !isNaN(parseFloat(row['P.Unitario Final'])) ? parseFloat(row['P.Unitario Final']) : 0,
+                            'Atributo 1': row['Atributo 1'] !== undefined && row['Atributo 1'] !== "" ? row['Atributo 1'].toString().trim() : 'SIN PROVEEDOR',
+                            'Marca': marcaCelda
+                        };
+                    });
+
+                    if(datosCompletos.length > 0){
+                        datosFiltrados = [...datosCompletos];
+                        poblarProveedores(datosCompletos);
+                        document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
+                    } else {
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se pudieron cargar los datos. Verifica el formato del Google Sheet.</td></tr>`;
+                    }
+                },
+                error: function(err) {
+                    console.error("Error al cargar el CSV:", err);
+                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">Error al conectar con la base de datos. Verifica el enlace de Google Sheets.</td></tr>`;
+                }
+            });
+        }
 
         function poblarProveedores(datos) {
             const select = document.getElementById('proveedorSelect');
@@ -299,7 +346,6 @@
             }
 
             const doc = generarDocumentoPdf();
-            // Obtenemos el archivo binario crudo del PDF
             const pdfBlob = doc.output('blob');
             const prov = document.getElementById('proveedorSelect').value || "Todos";
             const nombreArchivo = `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.pdf`;
