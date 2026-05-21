@@ -14,7 +14,7 @@
 
     <div class="container mx-auto max-w-7xl p-6">
         <div class="w-full flex justify-center mb-6 bg-white p-4 rounded-xl shadow-xs border border-gray-200">
-            <img id="logoBanner" src="https://i.postimg.cc/MnxJSvgf/image-dda983.jpg" alt="Logos" class="max-h-24 object-contain" crossorigin="anonymous">
+            <img id="logoBanner" src="https://i.postimg.cc/MnxJSvgf/image-dda983.jpg" alt="Logos Institucionales" class="max-h-24 object-contain" crossorigin="anonymous">
         </div>
 
         <header class="mb-8 text-center md:text-left flex flex-col lg:flex-row justify-between items-center gap-4">
@@ -70,7 +70,7 @@
                     </thead>
                     <tbody id="resultadosBody" class="divide-y divide-gray-200 text-gray-700 text-sm">
                         <tr>
-                            <td colspan="6" class="py-8 text-center text-gray-500 italic">Cargando datos desde la nube...</td>
+                            <td colspan="6" class="py-8 text-center text-gray-500 italic">Conectando con Google Sheets y descargando datos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -79,12 +79,13 @@
     </div>
 
     <script>
-        // PEGA AQUÍ EL ENLACE CSV QUE OBTUVISTE DE GOOGLE SHEETS
+        // ENLACE CORREGIDO PARA DESCARGAR EN FORMATO CSV
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoUumCa0LO8l-KaiRrPGdqRN9KI4UG8Z2GV1NM-lKX8oTWRGqSdubUzo8DilXi3dqu4iDX762qpnL5/pub?output=csv"; 
         
         let datosCompletos = [];
         let datosFiltrados = [];
 
+        // Al iniciar la página, se conecta al Google Sheet
         window.addEventListener('DOMContentLoaded', () => {
             cargarDatosDesdeGoogleSheets();
         });
@@ -92,22 +93,25 @@
         function cargarDatosDesdeGoogleSheets() {
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true,
-                header: true, // Asume que la primera fila son los nombres de las columnas
+                header: true, 
                 complete: function(results) {
                     const jsonData = results.data;
                     
-                    // Filtrar filas vacías y normalizar los nombres de las columnas para que coincidan con tu Excel original
-                    const filasConArticulo = jsonData.filter(row => {
-                        return row['Artículo'] && row['Artículo'].toString().trim() !== "";
-                    });
+                    // Asegurarnos que existan filas y que la primera fila tenga propiedades
+                    if(!jsonData || jsonData.length === 0) {
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">El documento parece estar vacío.</td></tr>`;
+                        return;
+                    }
 
-                    // Verificamos si encontramos la columna descripción
+                    // Identificar si la columna de descripción se llama "Descripción" o "Descripción_1"
                     let nombreColumnaDescripcion = 'Descripción';
-                    if(!filasConArticulo[0].hasOwnProperty('Descripción') && filasConArticulo[0].hasOwnProperty('Descripción_1')){
+                    if(!jsonData[0].hasOwnProperty('Descripción') && jsonData[0].hasOwnProperty('Descripción_1')){
                         nombreColumnaDescripcion = 'Descripción_1';
                     }
 
-                    datosCompletos = filasConArticulo.map(row => {
+                    // Filtrar filas vacías (donde no hay artículo) y armar nuestro listado limpio
+                    datosCompletos = jsonData.filter(row => row['Artículo'] && row['Artículo'].toString().trim() !== "")
+                    .map(row => {
                         let marcaCelda = row['Atributo 2'] !== undefined ? row['Atributo 2'].toString().trim() : '';
                         if (marcaCelda === "") marcaCelda = "GENERAL";
 
@@ -128,12 +132,12 @@
                         poblarProveedores(datosCompletos);
                         document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
                     } else {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se pudieron cargar los datos. Verifica el formato del Google Sheet.</td></tr>`;
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se encontraron productos en el documento. Revisá los nombres de las columnas.</td></tr>`;
                     }
                 },
                 error: function(err) {
                     console.error("Error al cargar el CSV:", err);
-                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">Error al conectar con la base de datos. Verifica el enlace de Google Sheets.</td></tr>`;
+                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">Error al conectar con Google Sheets. Asegurate de que el archivo esté publicado en la web.</td></tr>`;
                 }
             });
         }
@@ -226,6 +230,7 @@
                 .row-marca { background-color: #f1f5f9; font-weight: bold; color: #1e3a8a; }
                 .text-center { text-align: center; }
                 .text-right { text-align: right; }
+                .font-mono { font-family: monospace; }
             </style></head>
             <body>
                 <table>
@@ -242,15 +247,21 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Marca</th><th>Código Art.</th><th>Cod. Barra</th><th>Descripción del Artículo</th><th>U. (Cant)</th><th>Precio Final</th><th>P. Final Unitario</th>
+                            <th style="width: 140px;">Marca</th>
+                            <th style="width: 90px;">Código Art.</th>
+                            <th style="width: 120px;">Cod. Barra</th>
+                            <th style="width: 300px;">Descripción del Artículo</th>
+                            <th style="width: 80px;">U. (Cant)</th>
+                            <th style="width: 110px;">Precio Final</th>
+                            <th style="width: 120px;">P. Final Unitario</th>
                         </tr>
                     </thead>
                     <tbody>`;
             datosFiltrados.forEach(p => {
                 html += `<tr>
                     <td class="row-marca">${p['Marca']}</td>
-                    <td class="text-center">${p['Artículo']}</td>
-                    <td class="text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td>
+                    <td class="font-mono text-center">${p['Artículo']}</td>
+                    <td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td>
                     <td>${p['Descripcion_Articulo']}</td>
                     <td class="text-center">${p['Unidades']}</td>
                     <td class="text-right">${formatearMoneda(p['Precio Final'])}</td>
@@ -311,11 +322,11 @@
             doc.save(`Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.pdf`);
         });
 
-        // Compartir Excel a WhatsApp / Apps
+        // Compartir Excel a WhatsApp / Apps (Solo Android/iOS)
         document.getElementById('btnShareExcel').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
             if (!navigator.share) {
-                alert("Tu navegador o dispositivo no soporta la función nativa de compartir directamente.");
+                alert("Tu dispositivo o navegador no soporta compartir directamente a aplicaciones.");
                 return;
             }
 
@@ -337,11 +348,11 @@
             }
         });
 
-        // Compartir PDF a WhatsApp / Apps
+        // Compartir PDF a WhatsApp / Apps (Solo Android/iOS)
         document.getElementById('btnSharePdf').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
             if (!navigator.share) {
-                alert("Tu navegador o dispositivo no soporta la función nativa de compartir directamente.");
+                alert("Tu dispositivo o navegador no soporta compartir directamente a aplicaciones.");
                 return;
             }
 
