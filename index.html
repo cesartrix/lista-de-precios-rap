@@ -93,46 +93,102 @@
         function cargarDatosDesdeGoogleSheets() {
             Papa.parse(GOOGLE_SHEET_CSV_URL, {
                 download: true,
-                header: true, 
+                header: false, // Ahora leemos como matriz pura (arrays) para encontrar la cabecera real
                 complete: function(results) {
-                    const jsonData = results.data;
+                    const dataMatrix = results.data;
                     
-                    // Asegurarnos que existan filas y que la primera fila tenga propiedades
-                    if(!jsonData || jsonData.length === 0) {
+                    if(!dataMatrix || dataMatrix.length === 0) {
                         document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">El documento parece estar vacío.</td></tr>`;
                         return;
                     }
 
-                    // Identificar si la columna de descripción se llama "Descripción" o "Descripción_1"
-                    let nombreColumnaDescripcion = 'Descripción';
-                    if(!jsonData[0].hasOwnProperty('Descripción') && jsonData[0].hasOwnProperty('Descripción_1')){
-                        nombreColumnaDescripcion = 'Descripción_1';
+                    // Buscar la fila de encabezados
+                    let headerIndex = -1;
+                    let headers = [];
+                    for (let i = 0; i < dataMatrix.length; i++) {
+                        const row = dataMatrix[i];
+                        // Buscamos una fila que tenga la palabra 'Artículo' o 'Articulo'
+                        if (row.some(cell => typeof cell === 'string' && cell.trim().toLowerCase().includes('artículo'))) {
+                            headerIndex = i;
+                            // Limpiamos los nombres de los encabezados (quitamos espacios extra)
+                            headers = row.map(cell => typeof cell === 'string' ? cell.trim() : cell);
+                            break;
+                        }
                     }
 
-                    // Filtrar filas vacías (donde no hay artículo) y armar nuestro listado limpio
-                    datosCompletos = jsonData.filter(row => row['Artículo'] && row['Artículo'].toString().trim() !== "")
-                    .map(row => {
-                        let marcaCelda = row['Atributo 2'] !== undefined ? row['Atributo 2'].toString().trim() : '';
+                    if (headerIndex === -1) {
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se encontró la fila de títulos (debe contener 'Artículo'). Revisá tu Google Sheet.</td></tr>`;
+                        return;
+                    }
+
+                    // Encontramos los índices de las columnas importantes usando un sistema más flexible
+                    const idxArticulo = headers.findIndex(h => h.toLowerCase().includes('artículo'));
+                    const idxCodBarra = headers.findIndex(h => h.toLowerCase().includes('cod.barra') || h.toLowerCase().includes('código barras'));
+                    const idxUnidades = headers.findIndex(h => h.toLowerCase().includes('unidades'));
+                    const idxPrecioFinal = headers.findIndex(h => h.toLowerCase().includes('precio final') && !h.toLowerCase().includes('unitario'));
+                    const idxPrecioUnitario = headers.findIndex(h => h.toLowerCase().includes('p.unitario final') || h.toLowerCase().includes('precio final unitario'));
+                    const idxProveedor = headers.findIndex(h => h.toLowerCase().includes('atributo 1'));
+                    const idxMarca = headers.findIndex(h => h.toLowerCase().includes('atributo 2'));
+                    
+                    // Buscar la descripción (generalmente la segunda 'Descripción' o 'Descripción_1')
+                    let idxDescripcionArticulo = headers.findIndex(h => h === 'Descripción_1');
+                    if (idxDescripcionArticulo === -1) {
+                         // Si no hay Descripción_1, buscamos la segunda aparición de 'Descripción'
+                         let count = 0;
+                         for (let i = 0; i < headers.length; i++) {
+                             if (headers[i].toLowerCase() === 'descripción' || headers[i].toLowerCase() === 'descripcion') {
+                                 count++;
+                                 if (count === 2) {
+                                     idxDescripcionArticulo = i;
+                                     break;
+                                 }
+                             }
+                         }
+                    }
+                    // Respaldo final si no encuentra dos descripciones
+                    if (idxDescripcionArticulo === -1) {
+                        idxDescripcionArticulo = headers.findIndex(h => h.toLowerCase() === 'descripción' || h.toLowerCase() === 'descripcion');
+                    }
+
+                    // Procesar los datos (desde la fila siguiente al encabezado)
+                    for (let i = headerIndex + 1; i < dataMatrix.length; i++) {
+                        const row = dataMatrix[i];
+                        
+                        // Si la fila está vacía o no tiene el código de artículo, la salteamos
+                        if (!row || row.length === 0 || !row[idxArticulo] || row[idxArticulo].toString().trim() === "") {
+                            continue;
+                        }
+
+                        let marcaCelda = row[idxMarca] !== undefined ? row[idxMarca].toString().trim() : '';
                         if (marcaCelda === "") marcaCelda = "GENERAL";
 
-                        return {
-                            'Artículo': row['Artículo'] !== undefined ? row['Artículo'] : '',
-                            'Cod.Barra': row['Cod.Barra'] !== undefined ? row['Cod.Barra'] : (row['Código Barras'] || ''),
-                            'Descripcion_Articulo': row[nombreColumnaDescripcion] !== undefined ? row[nombreColumnaDescripcion] : 'Sin descripción',
-                            'Unidades': !isNaN(parseFloat(row['Unidades'])) ? parseFloat(row['Unidades']) : 0,
-                            'Precio Final': !isNaN(parseFloat(row['Precio Final'])) ? parseFloat(row['Precio Final']) : 0,
-                            'P.Unitario Final': !isNaN(parseFloat(row['P.Unitario Final'])) ? parseFloat(row['P.Unitario Final']) : 0,
-                            'Atributo 1': row['Atributo 1'] !== undefined && row['Atributo 1'] !== "" ? row['Atributo 1'].toString().trim() : 'SIN PROVEEDOR',
+                        // Extraer valores con cuidado
+                        const valArticulo = row[idxArticulo];
+                        const valCodBarra = row[idxCodBarra];
+                        const valDesc = row[idxDescripcionArticulo];
+                        const valUnidades = row[idxUnidades];
+                        const valPrecioFinal = row[idxPrecioFinal];
+                        const valPrecioUnitario = row[idxPrecioUnitario];
+                        const valProveedor = row[idxProveedor];
+
+                        datosCompletos.push({
+                            'Artículo': valArticulo ? valArticulo.toString().trim() : '',
+                            'Cod.Barra': valCodBarra ? valCodBarra.toString().trim() : '-',
+                            'Descripcion_Articulo': valDesc ? valDesc.toString().trim() : 'Sin descripción',
+                            'Unidades': !isNaN(parseFloat(valUnidades)) ? parseFloat(valUnidades) : 0,
+                            'Precio Final': !isNaN(parseFloat(valPrecioFinal)) ? parseFloat(valPrecioFinal) : 0,
+                            'P.Unitario Final': !isNaN(parseFloat(valPrecioUnitario)) ? parseFloat(valPrecioUnitario) : 0,
+                            'Atributo 1': valProveedor ? valProveedor.toString().trim() : 'SIN PROVEEDOR',
                             'Marca': marcaCelda
-                        };
-                    });
+                        });
+                    }
 
                     if(datosCompletos.length > 0){
                         datosFiltrados = [...datosCompletos];
                         poblarProveedores(datosCompletos);
                         document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
                     } else {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se encontraron productos en el documento. Revisá los nombres de las columnas.</td></tr>`;
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se procesaron productos. Comprobá que las columnas tengan los nombres correctos.</td></tr>`;
                     }
                 },
                 error: function(err) {
@@ -222,157 +278,3 @@
 
             let html = `
             <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="UTF-8"><style>
-                body { font-family: sans-serif; }
-                table { border-collapse: collapse; }
-                th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; border: 1px solid #0f172a; padding: 6px; text-align: center; }
-                td { border: 1px solid #cbd5e1; padding: 5px; font-size: 10pt; }
-                .row-marca { background-color: #f1f5f9; font-weight: bold; color: #1e3a8a; }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                .font-mono { font-family: monospace; }
-            </style></head>
-            <body>
-                <table>
-                    <tr>
-                        <td colspan="3" style="border:none; height:70px; valign:middle;"><img src="${logoUrl}" width="220" height="65"></td>
-                        <td colspan="3" style="border:none; valign:middle;">
-                            <span style="font-size:16pt; font-weight:bold; color:#1e3a8a;">REPORTE DE PRECIOS</span><br>
-                            <span><strong>Proveedor:</strong> ${prov}</span><br>
-                            <span><strong>Fecha:</strong> ${fechaStr}</span>
-                        </td>
-                    </tr>
-                    <tr style="height:15px;"><td colspan="6" style="border:none;"></td></tr>
-                </table>
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 140px;">Marca</th>
-                            <th style="width: 90px;">Código Art.</th>
-                            <th style="width: 120px;">Cod. Barra</th>
-                            <th style="width: 300px;">Descripción del Artículo</th>
-                            <th style="width: 80px;">U. (Cant)</th>
-                            <th style="width: 110px;">Precio Final</th>
-                            <th style="width: 120px;">P. Final Unitario</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            datosFiltrados.forEach(p => {
-                html += `<tr>
-                    <td class="row-marca">${p['Marca']}</td>
-                    <td class="font-mono text-center">${p['Artículo']}</td>
-                    <td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td>
-                    <td>${p['Descripcion_Articulo']}</td>
-                    <td class="text-center">${p['Unidades']}</td>
-                    <td class="text-right">${formatearMoneda(p['Precio Final'])}</td>
-                    <td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
-                </tr>`;
-            });
-            html += `</tbody></table></body></html>`;
-            return html;
-        }
-
-        // --- FUNCIÓN MAESTRA: GENERAR OBJETO PDF ---
-        function generarDocumentoPdf() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'pt', 'a4');
-            const prov = document.getElementById('proveedorSelect').value || "Todos los Proveedores";
-            const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Final']), formatearMoneda(p['P.Unitario Final'])]);
-
-            doc.autoTable({
-                startY: 130,
-                head: [['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'Cant.', 'Precio Final', 'Precio Final Unitario']],
-                body: filas,
-                theme: 'striped',
-                headStyles: { fillColor: [30, 58, 138] },
-                columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:35}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
-                margin: { top: 130, left: 35, right: 35 },
-                didDrawPage: function(data) {
-                    try { doc.addImage(document.getElementById('logoBanner'), 'JPEG', 35, 20, 240, 72); } catch (e) {}
-                    doc.setFontSize(10); doc.setTextColor(71, 85, 105);
-                    doc.text(`Proveedor: ${prov}`, 330, 50);
-                    const h = new Date(); doc.text(`Fecha: ${h.getDate()}/${h.getMonth()+1}/${h.getFullYear()}`, 330, 65);
-                    doc.text(`Página ${data.pageNumber}`, 330, 80);
-                    doc.line(35, 105, 560, 105);
-                }
-            });
-            return doc;
-        }
-
-        // --- MANEJADORES DE ACCIONES ---
-
-        // Descargar Excel Local
-        document.getElementById('btnExportExcel').addEventListener('click', () => {
-            if (datosFiltrados.length === 0) return;
-            const content = generarStringExcel();
-            const blob = new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            a.setAttribute("download", `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.xls`);
-            a.click();
-        });
-
-        // Descargar PDF Local
-        document.getElementById('btnExportPdf').addEventListener('click', () => {
-            if (datosFiltrados.length === 0) return;
-            const doc = generarDocumentoPdf();
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            doc.save(`Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-        });
-
-        // Compartir Excel a WhatsApp / Apps (Solo Android/iOS)
-        document.getElementById('btnShareExcel').addEventListener('click', async () => {
-            if (datosFiltrados.length === 0) return;
-            if (!navigator.share) {
-                alert("Tu dispositivo o navegador no soporta compartir directamente a aplicaciones.");
-                return;
-            }
-
-            const content = generarStringExcel();
-            const blob = new Blob([content], { type: 'application/vnd.ms-excel' });
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            const nombreArchivo = `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.xls`;
-            
-            const archivo = new File([blob], nombreArchivo, { type: 'application/vnd.ms-excel' });
-
-            try {
-                await navigator.share({
-                    files: [archivo],
-                    title: 'Catálogo de Precios',
-                    text: `Te comparto la lista de precios filtrada del proveedor: ${prov}`
-                });
-            } catch (err) {
-                console.log("Compartir cancelado o con error: ", err);
-            }
-        });
-
-        // Compartir PDF a WhatsApp / Apps (Solo Android/iOS)
-        document.getElementById('btnSharePdf').addEventListener('click', async () => {
-            if (datosFiltrados.length === 0) return;
-            if (!navigator.share) {
-                alert("Tu dispositivo o navegador no soporta compartir directamente a aplicaciones.");
-                return;
-            }
-
-            const doc = generarDocumentoPdf();
-            const pdfBlob = doc.output('blob');
-            const prov = document.getElementById('proveedorSelect').value || "Todos";
-            const nombreArchivo = `Precios_${prov.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-
-            const archivo = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
-
-            try {
-                await navigator.share({
-                    files: [archivo],
-                    title: 'Catálogo de Precios PDF',
-                    text: `Te comparto el PDF de precios oficiales del proveedor: ${prov}`
-                });
-            } catch (err) {
-                console.log("Compartir cancelado o con error: ", err);
-            }
-        });
-    </script>
-</body>
-</html>
