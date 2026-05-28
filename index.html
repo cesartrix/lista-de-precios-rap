@@ -366,7 +366,19 @@
                     <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Neto Unidad'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
                 </tr>`;
             });
-            html += `</tbody></table></body></html>`;
+            
+            html += `</tbody></table>
+            <br>
+            <table style="border:none;">
+                <tr>
+                    <td colspan="7" style="border:none; font-weight:bold; font-size:11pt; color:#1e3a8a;">Consulta con tu vendedor por acciones comerciales.</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="border:none; font-style:italic; font-size:10pt; color:#475569;">Los precios están sujetos a cambios sin previo aviso.</td>
+                </tr>
+            </table>
+            </body></html>`;
+            
             return html;
         }
 
@@ -393,6 +405,24 @@
                     doc.line(35, 105, 560, 105);
                 }
             });
+
+            let finalY = doc.lastAutoTable.finalY;
+            
+            if (finalY > 780) {
+                doc.addPage();
+                finalY = 40; 
+            }
+            
+            doc.setFontSize(11);
+            doc.setTextColor(30, 58, 138); 
+            doc.setFont("helvetica", "bold");
+            doc.text("Consulta con tu vendedor por acciones comerciales.", 35, finalY + 25);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.setFont("helvetica", "italic");
+            doc.text("Los precios están sujetos a cambios sin previo aviso.", 35, finalY + 40);
+
             return doc;
         }
 
