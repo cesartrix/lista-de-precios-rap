@@ -30,7 +30,6 @@
                 <button id="btnExportPdf" class="w-full flex justify-center items-center gap-1.5 bg-rose-700 hover:bg-rose-800 text-white font-semibold py-2.5 px-3 rounded-lg shadow-sm cursor-pointer text-xs md:text-sm transition-colors active:scale-95">
                     Descargar PDF
                 </button>
-                
                 <button id="btnShareExcel" class="w-full flex justify-center items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-3 rounded-lg shadow-sm cursor-pointer text-xs md:text-sm transition-colors active:scale-95">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 10.742l4.632-2.316m0 0a3 3 0 102.684-2.684 3 3 0 00-2.684 2.684zm-4.632 2.316m0 0a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0 0L13.316 15.316"></path></svg>
                     Enviar Excel
@@ -45,13 +44,19 @@
         <div class="bg-white p-4 md:p-6 rounded-xl shadow-xs border border-gray-200 mb-4 md:mb-6 flex flex-col md:flex-row gap-4">
             <div class="w-full md:w-1/3">
                 <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">Filtrar por Proveedor:</label>
-                <select id="proveedorSelect" class="w-full bg-white border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none">
+                <select id="proveedorSelect" class="w-full bg-gray-50 border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm">
                     <option value="">Cargando proveedores...</option>
                 </select>
             </div>
-            <div class="w-full md:w-2/3">
+            <div class="w-full md:w-1/3">
+                <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">Filtrar por Marca:</label>
+                <select id="marcaSelect" class="w-full bg-gray-50 border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm" disabled>
+                    <option value="">Cargando marcas...</option>
+                </select>
+            </div>
+            <div class="w-full md:w-1/3">
                 <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1.5">Buscar Artículo:</label>
-                <input type="text" id="txtBuscar" placeholder="Ej: Código, marca, descripción..." class="w-full bg-white border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                <input type="text" id="txtBuscar" placeholder="Ej: Código, descripción..." class="w-full bg-white border border-gray-300 text-gray-700 py-3 md:py-2.5 px-4 rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
             </div>
         </div>
 
@@ -74,7 +79,7 @@
                     </thead>
                     <tbody id="resultadosBody" class="divide-y divide-gray-200 text-gray-700 text-xs md:text-sm">
                         <tr>
-                            <td colspan="6" class="py-8 text-center text-gray-500 italic">Conectando con Google Sheets y descargando datos...</td>
+                            <td colspan="6" id="loadingText" class="py-8 text-center text-gray-500 italic">Conectando con Google Sheets y descargando datos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -83,7 +88,8 @@
     </div>
 
     <script>
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoUumCa0LO8l-KaiRrPGdqRN9KI4UG8Z2GV1NM-lKX8oTWRGqSdubUzo8DilXi3dqu4iDX762qpnL5/pub?output=csv"; 
+        // ¡PEGÁ ACÁ ABAJO EL ENLACE NORMAL DE LA BARRA DE DIRECCIONES DE TU EXCEL DE GOOGLE!
+        const ENLACE_NORMAL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/1Z04LsDjYnu7Gk6UMIYTlQloIskmd5yvhfw0AhoiBE4o/edit?gid=0#gid=0"; 
         
         let datosCompletos = [];
         let datosFiltrados = [];
@@ -92,88 +98,116 @@
             cargarDatosDesdeGoogleSheets();
         });
 
+        // Convertidor Inteligente de Enlaces
+        function obtenerUrlApi(urlOriginal) {
+            const match = urlOriginal.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) {
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv`;
+            }
+            return urlOriginal;
+        }
+
+        const safeString = (val) => {
+            if (val && typeof val === 'string') return val.toLowerCase().trim();
+            return '';
+        };
+
         function cargarDatosDesdeGoogleSheets() {
-            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+            const urlFinalApi = obtenerUrlApi(ENLACE_NORMAL_GOOGLE_SHEETS);
+
+            Papa.parse(urlFinalApi, {
                 download: true,
                 header: false, 
+                skipEmptyLines: true,
                 complete: function(results) {
-                    const dataMatrix = results.data;
-                    
-                    if(!dataMatrix || dataMatrix.length === 0) {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">El documento parece estar vacío.</td></tr>`;
-                        return;
-                    }
-
-                    let headerIndex = -1;
-                    let headers = [];
-                    for (let i = 0; i < dataMatrix.length; i++) {
-                        const row = dataMatrix[i];
-                        if (row.some(cell => typeof cell === 'string' && cell.trim().toLowerCase().includes('artículo'))) {
-                            headerIndex = i;
-                            headers = row.map(cell => typeof cell === 'string' ? cell.trim() : cell);
-                            break;
+                    try {
+                        const dataMatrix = results.data;
+                        
+                        if(!dataMatrix || dataMatrix.length === 0) {
+                            document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium">El documento parece estar vacío.</td></tr>`;
+                            return;
                         }
-                    }
 
-                    if (headerIndex === -1) {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se encontró la fila de títulos.</td></tr>`;
-                        return;
-                    }
+                        let headerIndex = -1;
+                        let headers = [];
+                        for (let i = 0; i < dataMatrix.length; i++) {
+                            const row = dataMatrix[i];
+                            if (row.some(cell => safeString(cell).includes('artículo') || safeString(cell).includes('articulo'))) {
+                                headerIndex = i;
+                                headers = row.map(cell => typeof cell === 'string' ? cell.trim() : cell);
+                                break;
+                            }
+                        }
 
-                    const idxArticulo = headers.findIndex(h => h.toLowerCase().includes('artículo'));
-                    const idxCodBarra = headers.findIndex(h => h.toLowerCase().includes('cod.barra') || h.toLowerCase().includes('código barras'));
-                    const idxUnidades = headers.findIndex(h => h.toLowerCase().includes('unidades'));
-                    const idxPrecioFinal = headers.findIndex(h => h.toLowerCase().includes('precio final') && !h.toLowerCase().includes('unitario'));
-                    const idxPrecioUnitario = headers.findIndex(h => h.toLowerCase().includes('p.unitario final') || h.toLowerCase().includes('precio final unitario'));
-                    const idxProveedor = headers.findIndex(h => h.toLowerCase().includes('atributo 1'));
-                    const idxMarca = headers.findIndex(h => h.toLowerCase().includes('atributo 2'));
-                    
-                    let idxDescripcionArticulo = headers.findIndex(h => h === 'Descripción_1');
-                    if (idxDescripcionArticulo === -1) {
-                         let count = 0;
-                         for (let i = 0; i < headers.length; i++) {
-                             if (headers[i].toLowerCase() === 'descripción' || headers[i].toLowerCase() === 'descripcion') {
-                                 count++;
-                                 if (count === 2) {
-                                     idxDescripcionArticulo = i;
-                                     break;
-                                 }
-                             }
-                         }
-                    }
-                    if (idxDescripcionArticulo === -1) {
-                        idxDescripcionArticulo = headers.findIndex(h => h.toLowerCase() === 'descripción' || h.toLowerCase() === 'descripcion');
-                    }
+                        if (headerIndex === -1) {
+                            document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium">
+                                Error: No se encontró la cabecera "Artículo".<br>
+                                <span class="text-xs text-gray-500 mt-2 block">Verificá que el enlace copiado sea correcto y que tu Excel tenga títulos.</span>
+                            </td></tr>`;
+                            return;
+                        }
 
-                    for (let i = headerIndex + 1; i < dataMatrix.length; i++) {
-                        const row = dataMatrix[i];
-                        if (!row || row.length === 0 || !row[idxArticulo] || row[idxArticulo].toString().trim() === "") continue;
+                        const idxArticulo = headers.findIndex(h => safeString(h).includes('artículo') || safeString(h).includes('articulo'));
+                        const idxCodBarra = headers.findIndex(h => safeString(h).includes('cod.barra') || safeString(h).includes('código barras'));
+                        const idxUnidades = headers.findIndex(h => safeString(h).includes('unidades'));
+                        const idxPrecioFinal = headers.findIndex(h => safeString(h).includes('precio final') && !safeString(h).includes('unitario'));
+                        const idxPrecioUnitario = headers.findIndex(h => safeString(h).includes('p.unitario final') || safeString(h).includes('precio final unitario'));
+                        const idxProveedor = headers.findIndex(h => safeString(h).includes('atributo 1'));
+                        const idxMarca = headers.findIndex(h => safeString(h).includes('atributo 2'));
+                        
+                        let idxDescripcionArticulo = headers.findIndex(h => safeString(h) === 'descripción_1' || safeString(h) === 'descripcion_1');
+                        
+                        if (idxDescripcionArticulo === -1) {
+                            let count = 0;
+                            for (let i = 0; i < headers.length; i++) {
+                                let val = safeString(headers[i]);
+                                if (val === 'descripción' || val === 'descripcion') {
+                                    count++;
+                                    if (count === 2) {
+                                        idxDescripcionArticulo = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (idxDescripcionArticulo === -1) {
+                            idxDescripcionArticulo = headers.findIndex(h => safeString(h) === 'descripción' || safeString(h) === 'descripcion');
+                        }
 
-                        let marcaCelda = row[idxMarca] !== undefined ? row[idxMarca].toString().trim() : '';
-                        if (marcaCelda === "") marcaCelda = "GENERAL";
+                        for (let i = headerIndex + 1; i < dataMatrix.length; i++) {
+                            const row = dataMatrix[i];
+                            if (!row || row.length === 0 || row[idxArticulo] === undefined || row[idxArticulo] === null || row[idxArticulo].toString().trim() === "") continue;
 
-                        datosCompletos.push({
-                            'Artículo': row[idxArticulo] ? row[idxArticulo].toString().trim() : '',
-                            'Cod.Barra': row[idxCodBarra] ? row[idxCodBarra].toString().trim() : '-',
-                            'Descripcion_Articulo': row[idxDescripcionArticulo] ? row[idxDescripcionArticulo].toString().trim() : 'Sin descripción',
-                            'Unidades': !isNaN(parseFloat(row[idxUnidades])) ? parseFloat(row[idxUnidades]) : 0,
-                            'Precio Final': !isNaN(parseFloat(row[idxPrecioFinal])) ? parseFloat(row[idxPrecioFinal]) : 0,
-                            'P.Unitario Final': !isNaN(parseFloat(row[idxPrecioUnitario])) ? parseFloat(row[idxPrecioUnitario]) : 0,
-                            'Atributo 1': row[idxProveedor] ? row[idxProveedor].toString().trim() : 'SIN PROVEEDOR',
-                            'Marca': marcaCelda
-                        });
-                    }
+                            let marcaCelda = row[idxMarca] !== undefined && row[idxMarca] !== null ? row[idxMarca].toString().trim() : '';
+                            if (marcaCelda === "") marcaCelda = "GENERAL";
 
-                    if(datosCompletos.length > 0){
-                        datosFiltrados = [...datosCompletos];
-                        poblarProveedores(datosCompletos);
-                        document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
-                    } else {
-                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">No se procesaron productos.</td></tr>`;
+                            datosCompletos.push({
+                                'Artículo': row[idxArticulo] !== null ? row[idxArticulo].toString().trim() : '',
+                                'Cod.Barra': row[idxCodBarra] !== undefined && row[idxCodBarra] !== null && row[idxCodBarra] !== "" ? row[idxCodBarra].toString().trim() : '-',
+                                'Descripcion_Articulo': row[idxDescripcionArticulo] !== undefined && row[idxDescripcionArticulo] !== null ? row[idxDescripcionArticulo].toString().trim() : 'Sin descripción',
+                                'Unidades': !isNaN(parseFloat(row[idxUnidades])) ? parseFloat(row[idxUnidades]) : 0,
+                                'Precio Final': !isNaN(parseFloat(row[idxPrecioFinal])) ? parseFloat(row[idxPrecioFinal]) : 0,
+                                'P.Unitario Final': !isNaN(parseFloat(row[idxPrecioUnitario])) ? parseFloat(row[idxPrecioUnitario]) : 0,
+                                'Atributo 1': row[idxProveedor] !== undefined && row[idxProveedor] !== null && row[idxProveedor] !== "" ? row[idxProveedor].toString().trim() : 'SIN PROVEEDOR',
+                                'Marca': marcaCelda
+                            });
+                        }
+
+                        if(datosCompletos.length > 0){
+                            datosFiltrados = [...datosCompletos];
+                            poblarProveedores(datosCompletos);
+                            document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
+                        } else {
+                            document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium">No se detectaron productos en tu planilla.</td></tr>`;
+                        }
+
+                    } catch (errorInterno) {
+                        document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium">Error procesando los datos: ${errorInterno.message}</td></tr>`;
                     }
                 },
                 error: function(err) {
-                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium bg-rose-50">Error de conexión con Google Sheets.</td></tr>`;
+                    document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium">Error de conexión con Google Sheets. Verificá que el enlace copiado sea correcto.</td></tr>`;
                 }
             });
         }
@@ -186,25 +220,61 @@
                 const opt = document.createElement('option');
                 opt.value = prov; opt.textContent = prov; select.appendChild(opt);
             });
+            
+            // Llenar las marcas inicialmente (todas)
+            poblarMarcas("");
             aplicarFiltros();
         }
 
-        document.getElementById('proveedorSelect').addEventListener('change', aplicarFiltros);
+        // Nueva función para poblar marcas dependiendo del proveedor
+        function poblarMarcas(proveedorSeleccionado) {
+            const selectMarca = document.getElementById('marcaSelect');
+            selectMarca.innerHTML = '<option value="">-- Todas las Marcas --</option>';
+            
+            let datosParaMarcas = datosCompletos;
+            if (proveedorSeleccionado !== "") {
+                datosParaMarcas = datosCompletos.filter(item => item['Atributo 1'] === proveedorSeleccionado);
+            }
+
+            const marcas = [...new Set(datosParaMarcas.map(item => item['Marca']))].filter(m => m).sort();
+            
+            marcas.forEach(marca => {
+                const opt = document.createElement('option');
+                opt.value = marca; 
+                opt.textContent = marca; 
+                selectMarca.appendChild(opt);
+            });
+            
+            selectMarca.disabled = false;
+        }
+
+        // Event Listeners actualizados
+        document.getElementById('proveedorSelect').addEventListener('change', () => {
+            // Al cambiar el proveedor, actualizamos las marcas primero
+            poblarMarcas(document.getElementById('proveedorSelect').value);
+            // Reseteamos el filtro de marca porque la marca anterior podría no existir en este proveedor
+            document.getElementById('marcaSelect').value = "";
+            aplicarFiltros();
+        });
+        
+        document.getElementById('marcaSelect').addEventListener('change', aplicarFiltros);
         document.getElementById('txtBuscar').addEventListener('input', aplicarFiltros);
 
         function aplicarFiltros() {
             const provSel = document.getElementById('proveedorSelect').value;
+            const marcaSel = document.getElementById('marcaSelect').value;
             const txt = document.getElementById('txtBuscar').value.toLowerCase().trim();
 
             datosFiltrados = datosCompletos.filter(item => {
                 const cumpleProv = (provSel === "" || item['Atributo 1'] === provSel);
+                const cumpleMarca = (marcaSel === "" || item['Marca'] === marcaSel);
                 const cumpleTxt = (txt === "" || 
                     (item['Artículo'] || '').toString().toLowerCase().includes(txt) ||
                     (item['Cod.Barra'] || '').toString().toLowerCase().includes(txt) ||
                     (item['Marca'] || '').toString().toLowerCase().includes(txt) ||
                     (item['Descripcion_Articulo'] || '').toString().toLowerCase().includes(txt)
                 );
-                return cumpleProv && cumpleTxt;
+                return cumpleProv && cumpleMarca && cumpleTxt;
             });
             mostrarProductos(datosFiltrados);
         }
@@ -213,7 +283,7 @@
             const tbody = document.getElementById('resultadosBody');
             tbody.innerHTML = '';
             if (productos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-500 italic">Sin resultados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-500 italic">No se encontraron artículos.</td></tr>`;
                 return;
             }
 
@@ -249,7 +319,6 @@
             return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(v);
         }
 
-        // --- FUNCIÓN MAESTRA: GENERAR EXCEL ---
         function generarStringExcel() {
             const prov = document.getElementById('proveedorSelect').value || "Todos los Proveedores";
             const hoy = new Date();
@@ -296,7 +365,6 @@
             return html;
         }
 
-        // --- FUNCIÓN MAESTRA: GENERAR PDF ---
         function generarDocumentoPdf() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
@@ -323,7 +391,6 @@
             return doc;
         }
 
-        // --- ACCIONES DE BOTONES ---
         document.getElementById('btnExportExcel').addEventListener('click', () => {
             if (datosFiltrados.length === 0) return;
             const blob = new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -340,14 +407,14 @@
 
         document.getElementById('btnShareExcel').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
-            if (!navigator.share) { alert("Tu dispositivo no soporta compartir nativamente."); return; }
+            if (!navigator.share) { alert("Compartir directo no compatible, usá descargar."); return; }
             const archivo = new File([new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel' })], `Precios_${(document.getElementById('proveedorSelect').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.xls`, { type: 'application/vnd.ms-excel' });
             try { await navigator.share({ files: [archivo], title: 'Precios', text: 'Catálogo de Precios.' }); } catch (e) {}
         });
 
         document.getElementById('btnSharePdf').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
-            if (!navigator.share) { alert("Tu dispositivo no soporta compartir nativamente."); return; }
+            if (!navigator.share) { alert("Compartir directo no compatible, usá descargar."); return; }
             const archivo = new File([generarDocumentoPdf().output('blob')], `Precios_${(document.getElementById('proveedorSelect').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.pdf`, { type: 'application/pdf' });
             try { await navigator.share({ files: [archivo], title: 'Precios PDF', text: 'Catálogo de Precios PDF.' }); } catch (e) {}
         });
