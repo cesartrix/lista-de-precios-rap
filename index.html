@@ -72,8 +72,8 @@
                             <th class="py-3 px-4 md:px-6">Código</th>
                             <th class="py-3 px-4 md:px-6">Cod. Barra</th>
                             <th class="py-3 px-4 md:px-6">Descripción</th>
-                            <th class="py-3 px-4 md:px-6 text-center">Unidades</th>
-                            <th class="py-3 px-4 md:px-6 text-right">P. Final</th>
+                            <th class="py-3 px-4 md:px-6 text-center">Unidades x Bulto</th>
+                            <th class="py-3 px-4 md:px-6 text-right">P. Neto Unidad</th>
                             <th class="py-3 px-4 md:px-6 text-right">P. Unitario</th>
                         </tr>
                     </thead>
@@ -88,7 +88,6 @@
     </div>
 
     <script>
-        // ¡PEGÁ ACÁ ABAJO EL ENLACE NORMAL DE LA BARRA DE DIRECCIONES DE TU EXCEL DE GOOGLE!
         const ENLACE_NORMAL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/1Z04LsDjYnu7Gk6UMIYTlQloIskmd5yvhfw0AhoiBE4o/edit?gid=0#gid=0"; 
         
         let datosCompletos = [];
@@ -98,7 +97,6 @@
             cargarDatosDesdeGoogleSheets();
         });
 
-        // Convertidor Inteligente de Enlaces
         function obtenerUrlApi(urlOriginal) {
             const match = urlOriginal.match(/\/d\/([a-zA-Z0-9-_]+)/);
             if (match && match[1]) {
@@ -150,13 +148,20 @@
                         const idxArticulo = headers.findIndex(h => safeString(h).includes('artículo') || safeString(h).includes('articulo'));
                         const idxCodBarra = headers.findIndex(h => safeString(h).includes('cod.barra') || safeString(h).includes('código barras'));
                         const idxUnidades = headers.findIndex(h => safeString(h).includes('unidades'));
-                        const idxPrecioFinal = headers.findIndex(h => safeString(h).includes('precio final') && !safeString(h).includes('unitario'));
+                        const idxPrecioBase = headers.findIndex(h => safeString(h).includes('precio base'));
                         const idxPrecioUnitario = headers.findIndex(h => safeString(h).includes('p.unitario final') || safeString(h).includes('precio final unitario'));
                         const idxProveedor = headers.findIndex(h => safeString(h).includes('atributo 1'));
                         const idxMarca = headers.findIndex(h => safeString(h).includes('atributo 2'));
                         
+                        if (idxPrecioBase === -1) {
+                            document.getElementById('resultadosBody').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-rose-600 font-medium">
+                                Error: No se encontró la cabecera "Precio Base".<br>
+                                <span class="text-xs text-gray-500 mt-2 block">Asegurate de que exista la columna "Precio Base" en tu Google Sheets.</span>
+                            </td></tr>`;
+                            return;
+                        }
+
                         let idxDescripcionArticulo = headers.findIndex(h => safeString(h) === 'descripción_1' || safeString(h) === 'descripcion_1');
-                        
                         if (idxDescripcionArticulo === -1) {
                             let count = 0;
                             for (let i = 0; i < headers.length; i++) {
@@ -170,7 +175,6 @@
                                 }
                             }
                         }
-                        
                         if (idxDescripcionArticulo === -1) {
                             idxDescripcionArticulo = headers.findIndex(h => safeString(h) === 'descripción' || safeString(h) === 'descripcion');
                         }
@@ -182,12 +186,18 @@
                             let marcaCelda = row[idxMarca] !== undefined && row[idxMarca] !== null ? row[idxMarca].toString().trim() : '';
                             if (marcaCelda === "") marcaCelda = "GENERAL";
 
+                            let unidadesBulto = !isNaN(parseFloat(row[idxUnidades])) ? parseFloat(row[idxUnidades]) : 0;
+                            let precioBaseVal = !isNaN(parseFloat(row[idxPrecioBase])) ? parseFloat(row[idxPrecioBase]) : 0;
+                            
+                            // Cálculo dinámico solicitado: Precio Base / Unidades
+                            let precioNetoUnidadVal = unidadesBulto > 0 ? (precioBaseVal / unidadesBulto) : 0;
+
                             datosCompletos.push({
                                 'Artículo': row[idxArticulo] !== null ? row[idxArticulo].toString().trim() : '',
                                 'Cod.Barra': row[idxCodBarra] !== undefined && row[idxCodBarra] !== null && row[idxCodBarra] !== "" ? row[idxCodBarra].toString().trim() : '-',
                                 'Descripcion_Articulo': row[idxDescripcionArticulo] !== undefined && row[idxDescripcionArticulo] !== null ? row[idxDescripcionArticulo].toString().trim() : 'Sin descripción',
-                                'Unidades': !isNaN(parseFloat(row[idxUnidades])) ? parseFloat(row[idxUnidades]) : 0,
-                                'Precio Final': !isNaN(parseFloat(row[idxPrecioFinal])) ? parseFloat(row[idxPrecioFinal]) : 0,
+                                'Unidades': unidadesBulto,
+                                'Precio Neto Unidad': precioNetoUnidadVal,
                                 'P.Unitario Final': !isNaN(parseFloat(row[idxPrecioUnitario])) ? parseFloat(row[idxPrecioUnitario]) : 0,
                                 'Atributo 1': row[idxProveedor] !== undefined && row[idxProveedor] !== null && row[idxProveedor] !== "" ? row[idxProveedor].toString().trim() : 'SIN PROVEEDOR',
                                 'Marca': marcaCelda
@@ -221,12 +231,10 @@
                 opt.value = prov; opt.textContent = prov; select.appendChild(opt);
             });
             
-            // Llenar las marcas inicialmente (todas)
             poblarMarcas("");
             aplicarFiltros();
         }
 
-        // Nueva función para poblar marcas dependiendo del proveedor
         function poblarMarcas(proveedorSeleccionado) {
             const selectMarca = document.getElementById('marcaSelect');
             selectMarca.innerHTML = '<option value="">-- Todas las Marcas --</option>';
@@ -248,11 +256,8 @@
             selectMarca.disabled = false;
         }
 
-        // Event Listeners actualizados
         document.getElementById('proveedorSelect').addEventListener('change', () => {
-            // Al cambiar el proveedor, actualizamos las marcas primero
             poblarMarcas(document.getElementById('proveedorSelect').value);
-            // Reseteamos el filtro de marca porque la marca anterior podría no existir en este proveedor
             document.getElementById('marcaSelect').value = "";
             aplicarFiltros();
         });
@@ -306,7 +311,7 @@
                     <td class="py-3 px-4 md:px-6 font-mono text-gray-500">${prod['Cod.Barra']}</td>
                     <td class="py-3 px-4 md:px-6 font-medium text-gray-900">${prod['Descripcion_Articulo']}</td>
                     <td class="text-center py-3 px-4 md:px-6 font-semibold text-gray-700">${prod['Unidades']}</td>
-                    <td class="py-3 px-4 md:px-6 text-right font-semibold text-gray-900 whitespace-nowrap">${formatearMoneda(prod['Precio Final'])}</td>
+                    <td class="py-3 px-4 md:px-6 text-right font-semibold text-gray-900 whitespace-nowrap">${formatearMoneda(prod['Precio Neto Unidad'])}</td>
                     <td class="py-3 px-4 md:px-6 text-right text-blue-700 font-semibold whitespace-nowrap">${formatearMoneda(prod['P.Unitario Final'])}</td>
                 `;
                 tbody.appendChild(tr);
@@ -352,13 +357,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 140px;">Marca</th><th style="width: 90px;">Código Art.</th><th style="width: 120px;">Cod. Barra</th><th style="width: 300px;">Descripción del Artículo</th><th style="width: 80px;">U. (Cant)</th><th style="width: 110px;">Precio Final</th><th style="width: 120px;">P. Final Unitario</th>
+                            <th style="width: 140px;">Marca</th><th style="width: 90px;">Código Art.</th><th style="width: 120px;">Cod. Barra</th><th style="width: 300px;">Descripción del Artículo</th><th style="width: 110px;">Unidades x Bulto</th><th style="width: 120px;">P. Neto Unidad</th><th style="width: 120px;">P. Final Unitario</th>
                         </tr>
                     </thead>
                     <tbody>`;
             datosFiltrados.forEach(p => {
                 html += `<tr>
-                    <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Final'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
+                    <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Neto Unidad'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
                 </tr>`;
             });
             html += `</tbody></table></body></html>`;
@@ -369,15 +374,15 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
             const prov = document.getElementById('proveedorSelect').value || "Todos los Proveedores";
-            const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Final']), formatearMoneda(p['P.Unitario Final'])]);
+            const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Neto Unidad']), formatearMoneda(p['P.Unitario Final'])]);
 
             doc.autoTable({
                 startY: 130,
-                head: [['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'Cant.', 'Precio Final', 'Precio Final Unitario']],
+                head: [['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'U. x Bulto', 'P. Neto Unidad', 'Precio Final Unitario']],
                 body: filas,
                 theme: 'striped',
                 headStyles: { fillColor: [30, 58, 138] },
-                columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:35}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
+                columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:45}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
                 margin: { top: 130, left: 35, right: 35 },
                 didDrawPage: function(data) {
                     try { doc.addImage(document.getElementById('logoBanner'), 'JPEG', 35, 20, 240, 72); } catch (e) {}
