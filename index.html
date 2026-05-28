@@ -189,7 +189,6 @@
                             let unidadesBulto = !isNaN(parseFloat(row[idxUnidades])) ? parseFloat(row[idxUnidades]) : 0;
                             let precioBaseVal = !isNaN(parseFloat(row[idxPrecioBase])) ? parseFloat(row[idxPrecioBase]) : 0;
                             
-                            // Cálculo dinámico solicitado: Precio Base / Unidades
                             let precioNetoUnidadVal = unidadesBulto > 0 ? (precioBaseVal / unidadesBulto) : 0;
 
                             datosCompletos.push({
@@ -387,6 +386,8 @@
             const doc = new jsPDF('p', 'pt', 'a4');
             const prov = document.getElementById('proveedorSelect').value || "Todos los Proveedores";
             const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Neto Unidad']), formatearMoneda(p['P.Unitario Final'])]);
+            
+            const paginaAlto = doc.internal.pageSize.height || 842;
 
             doc.autoTable({
                 startY: 130,
@@ -395,33 +396,28 @@
                 theme: 'striped',
                 headStyles: { fillColor: [30, 58, 138] },
                 columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:45}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
-                margin: { top: 130, left: 35, right: 35 },
+                margin: { top: 130, bottom: 65, left: 35, right: 35 }, // Margen inferior aumentado para dar lugar al pie de página fijo
                 didDrawPage: function(data) {
                     try { doc.addImage(document.getElementById('logoBanner'), 'JPEG', 35, 20, 240, 72); } catch (e) {}
                     doc.setFontSize(10); doc.setTextColor(71, 85, 105);
+                    doc.setFont("helvetica", "normal");
                     doc.text(`Proveedor: ${prov}`, 330, 50);
                     const h = new Date(); doc.text(`Fecha: ${h.getDate()}/${h.getMonth()+1}/${h.getFullYear()}`, 330, 65);
                     doc.text(`Página ${data.pageNumber}`, 330, 80);
                     doc.line(35, 105, 560, 105);
+
+                    // --- PIE DE PÁGINA FIJO (Se repite en cada página) ---
+                    doc.setFontSize(10);
+                    doc.setTextColor(30, 58, 138); 
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Consulta con tu vendedor por acciones comerciales.", 35, paginaAlto - 40);
+                    
+                    doc.setFontSize(9);
+                    doc.setTextColor(100, 100, 100);
+                    doc.setFont("helvetica", "italic");
+                    doc.text("Los precios están sujetos a cambios sin previo aviso.", 35, paginaAlto - 25);
                 }
             });
-
-            let finalY = doc.lastAutoTable.finalY;
-            
-            if (finalY > 780) {
-                doc.addPage();
-                finalY = 40; 
-            }
-            
-            doc.setFontSize(11);
-            doc.setTextColor(30, 58, 138); 
-            doc.setFont("helvetica", "bold");
-            doc.text("Consulta con tu vendedor por acciones comerciales.", 35, finalY + 25);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.setFont("helvetica", "italic");
-            doc.text("Los precios están sujetos a cambios sin previo aviso.", 35, finalY + 40);
 
             return doc;
         }
