@@ -241,7 +241,6 @@
             
             let datosParaMarcas = datosCompletos;
             if (proveedorSeleccionado !== "") {
-                // Filtra mostrando marcas de cualquier proveedor que coincida parcialmente con lo escrito
                 datosParaMarcas = datosCompletos.filter(item => (item['Atributo 1'] || '').toLowerCase().includes(proveedorSeleccionado.toLowerCase()));
             }
 
@@ -256,10 +255,9 @@
             inputMarca.disabled = false;
         }
 
-        // EVENT LISTENERS PARA LOS INPUTS BUSCADORES
         document.getElementById('proveedorInput').addEventListener('input', () => {
             poblarMarcas(document.getElementById('proveedorInput').value.trim());
-            document.getElementById('marcaInput').value = ""; // Resetea la marca al cambiar el proveedor
+            document.getElementById('marcaInput').value = "";
             aplicarFiltros();
         });
         
@@ -272,7 +270,6 @@
             const txt = document.getElementById('txtBuscar').value.toLowerCase().trim();
 
             datosFiltrados = datosCompletos.filter(item => {
-                // Búsqueda flexible (si dejás vacío pasa, si escribís algo busca si lo incluye)
                 const cumpleProv = (provSel === "" || (item['Atributo 1'] || '').toLowerCase().includes(provSel));
                 const cumpleMarca = (marcaSel === "" || (item['Marca'] || '').toLowerCase().includes(marcaSel));
                 const cumpleTxt = (txt === "" || 
@@ -327,7 +324,8 @@
         }
 
         function generarStringExcel() {
-            const prov = document.getElementById('proveedorInput').value || "Todos los Proveedores";
+            // Obtenemos la marca elegida o mostramos un texto por defecto
+            const marca = document.getElementById('marcaInput').value || "Todas las Marcas";
             const hoy = new Date();
             const fechaStr = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
             const logoUrl = document.getElementById('logoBanner').src;
@@ -348,13 +346,13 @@
                 <table>
                     <tr>
                         <td colspan="3" style="border:none; height:70px; valign:middle;"><img src="${logoUrl}" width="220" height="65"></td>
-                        <td colspan="3" style="border:none; valign:middle;">
+                        <td colspan="4" style="border:none; valign:middle;">
                             <span style="font-size:16pt; font-weight:bold; color:#1e3a8a;">REPORTE DE PRECIOS</span><br>
-                            <span><strong>Proveedor:</strong> ${prov}</span><br>
+                            <span><strong>Marcas:</strong> ${marca}</span><br>
                             <span><strong>Fecha:</strong> ${fechaStr}</span>
                         </td>
                     </tr>
-                    <tr style="height:15px;"><td colspan="6" style="border:none;"></td></tr>
+                    <tr style="height:15px;"><td colspan="7" style="border:none;"></td></tr>
                 </table>
                 <table>
                     <thead>
@@ -368,14 +366,21 @@
                     <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Neto Unidad'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
                 </tr>`;
             });
-            html += `</tbody></table></body></html>`;
+            html += `</tbody>
+                    <tfoot>
+                        <tr><td colspan="7" style="border:none; height:20px;"></td></tr>
+                        <tr><td colspan="7" style="border:none; text-align:center; font-weight:bold; font-size:11pt; color:#1e3a8a;">Consulta con tu vendedor por acciones comerciales.</td></tr>
+                        <tr><td colspan="7" style="border:none; text-align:center; font-weight:bold; font-size:11pt; color:#1e3a8a;">Los precios están sujetos a cambios sin previo aviso.</td></tr>
+                    </tfoot>
+                </table></body></html>`;
             return html;
         }
 
         function generarDocumentoPdf() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
-            const prov = document.getElementById('proveedorInput').value || "Todos los Proveedores";
+            // Cambiamos a Marcas
+            const marca = document.getElementById('marcaInput').value || "Todas las Marcas";
             const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Neto Unidad']), formatearMoneda(p['P.Unitario Final'])]);
 
             doc.autoTable({
@@ -385,14 +390,26 @@
                 theme: 'striped',
                 headStyles: { fillColor: [30, 58, 138] },
                 columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:45}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
-                margin: { top: 130, left: 35, right: 35 },
+                // Añadimos margen bottom para dar espacio a las leyendas y que la tabla no se superponga
+                margin: { top: 130, left: 35, right: 35, bottom: 65 }, 
                 didDrawPage: function(data) {
+                    // --- HEADER ---
                     try { doc.addImage(document.getElementById('logoBanner'), 'JPEG', 35, 20, 240, 72); } catch (e) {}
                     doc.setFontSize(10); doc.setTextColor(71, 85, 105);
-                    doc.text(`Proveedor: ${prov}`, 330, 50);
+                    doc.text(`Marcas: ${marca}`, 330, 50);
                     const h = new Date(); doc.text(`Fecha: ${h.getDate()}/${h.getMonth()+1}/${h.getFullYear()}`, 330, 65);
                     doc.text(`Página ${data.pageNumber}`, 330, 80);
                     doc.line(35, 105, 560, 105);
+
+                    // --- FOOTER (Se repite en cada página) ---
+                    const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+                    const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+                    
+                    doc.setFontSize(11);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(30, 58, 138); // Azul oscuro para que haga juego con el diseño
+                    doc.text("Consulta con tu vendedor por acciones comerciales.", pageWidth / 2, pageHeight - 40, { align: 'center' });
+                    doc.text("Los precios están sujetos a cambios sin previo aviso.", pageWidth / 2, pageHeight - 25, { align: 'center' });
                 }
             });
             return doc;
@@ -403,26 +420,31 @@
             const blob = new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
-            a.download = `Precios_${(document.getElementById('proveedorInput').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.xls`;
+            // El nombre del archivo ahora basa su nombre en el filtro (para que no diga vacío si solo filtras marca)
+            const nombreArchivo = (document.getElementById('marcaInput').value || document.getElementById('proveedorInput').value || "Todas").replace(/[^a-z0-9]/gi, '_');
+            a.download = `Precios_${nombreArchivo}.xls`;
             a.click();
         });
 
         document.getElementById('btnExportPdf').addEventListener('click', () => {
             if (datosFiltrados.length === 0) return;
-            generarDocumentoPdf().save(`Precios_${(document.getElementById('proveedorInput').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.pdf`);
+            const nombreArchivo = (document.getElementById('marcaInput').value || document.getElementById('proveedorInput').value || "Todas").replace(/[^a-z0-9]/gi, '_');
+            generarDocumentoPdf().save(`Precios_${nombreArchivo}.pdf`);
         });
 
         document.getElementById('btnShareExcel').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
             if (!navigator.share) { alert("Compartir directo no compatible, usá descargar."); return; }
-            const archivo = new File([new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel' })], `Precios_${(document.getElementById('proveedorInput').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.xls`, { type: 'application/vnd.ms-excel' });
+            const nombreArchivo = (document.getElementById('marcaInput').value || document.getElementById('proveedorInput').value || "Todas").replace(/[^a-z0-9]/gi, '_');
+            const archivo = new File([new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel' })], `Precios_${nombreArchivo}.xls`, { type: 'application/vnd.ms-excel' });
             try { await navigator.share({ files: [archivo], title: 'Precios', text: 'Catálogo de Precios.' }); } catch (e) {}
         });
 
         document.getElementById('btnSharePdf').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
             if (!navigator.share) { alert("Compartir directo no compatible, usá descargar."); return; }
-            const archivo = new File([generarDocumentoPdf().output('blob')], `Precios_${(document.getElementById('proveedorInput').value || "Todos").replace(/[^a-z0-9]/gi, '_')}.pdf`, { type: 'application/pdf' });
+            const nombreArchivo = (document.getElementById('marcaInput').value || document.getElementById('proveedorInput').value || "Todas").replace(/[^a-z0-9]/gi, '_');
+            const archivo = new File([generarDocumentoPdf().output('blob')], `Precios_${nombreArchivo}.pdf`, { type: 'application/pdf' });
             try { await navigator.share({ files: [archivo], title: 'Precios PDF', text: 'Catálogo de Precios PDF.' }); } catch (e) {}
         });
     </script>
