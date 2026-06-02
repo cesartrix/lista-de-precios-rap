@@ -326,9 +326,8 @@
             return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(v);
         }
 
-function generarStringExcel() {
-            // Reemplazamos el Proveedor por la Marca seleccionada
-            const marca = document.getElementById('marcaSelect').value || "Todas las Marcas";
+        function generarStringExcel() {
+            const prov = document.getElementById('proveedorInput').value || "Todos los Proveedores";
             const hoy = new Date();
             const fechaStr = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
             const logoUrl = document.getElementById('logoBanner').src;
@@ -351,7 +350,7 @@ function generarStringExcel() {
                         <td colspan="3" style="border:none; height:70px; valign:middle;"><img src="${logoUrl}" width="220" height="65"></td>
                         <td colspan="3" style="border:none; valign:middle;">
                             <span style="font-size:16pt; font-weight:bold; color:#1e3a8a;">REPORTE DE PRECIOS</span><br>
-                            <span><strong>Marcas:</strong> ${marca}</span><br>
+                            <span><strong>Proveedor:</strong> ${prov}</span><br>
                             <span><strong>Fecha:</strong> ${fechaStr}</span>
                         </td>
                     </tr>
@@ -360,67 +359,45 @@ function generarStringExcel() {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 140px;">Marca</th><th style="width: 90px;">Código Art.</th><th style="width: 120px;">Cod. Barra</th><th style="width: 300px;">Descripción del Artículo</th><th style="width: 80px;">U. (Cant)</th><th style="width: 110px;">Precio Final</th><th style="width: 120px;">P. Final Unitario</th>
+                            <th style="width: 140px;">Marca</th><th style="width: 90px;">Código Art.</th><th style="width: 120px;">Cod. Barra</th><th style="width: 300px;">Descripción del Artículo</th><th style="width: 110px;">Unidades x Bulto</th><th style="width: 120px;">P. Neto Unidad</th><th style="width: 120px;">P. Final Unitario</th>
                         </tr>
                     </thead>
                     <tbody>`;
             datosFiltrados.forEach(p => {
                 html += `<tr>
-                    <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Final'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
+                    <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Neto Unidad'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
                 </tr>`;
             });
-            html += `</tbody></table>
-                <table>
-                    <tr style="height:15px;"><td colspan="7" style="border:none;"></td></tr>
-                    <tr><td colspan="7" style="border:none; font-style:italic; font-size:10pt;">Consulta con tu vendedor por acciones comerciales.</td></tr>
-                    <tr><td colspan="7" style="border:none; font-style:italic; font-size:10pt;">Los precios estan sujeto a cambios sin previo aviso.</td></tr>
-                </table>
-            </body></html>`;
+            html += `</tbody></table></body></html>`;
             return html;
         }
 
         function generarDocumentoPdf() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
-            
-            // Reemplazamos Proveedor por Marca
-            const marca = document.getElementById('marcaSelect').value || "Todas las Marcas";
-            const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Final']), formatearMoneda(p['P.Unitario Final'])]);
-
-            // Obtenemos el alto de la página para posicionar los textos al fondo
-            const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+            const prov = document.getElementById('proveedorInput').value || "Todos los Proveedores";
+            const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Neto Unidad']), formatearMoneda(p['P.Unitario Final'])]);
 
             doc.autoTable({
                 startY: 130,
-                head: [['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'Cant.', 'Precio Final', 'Precio Final Unitario']],
+                head: [['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'U. x Bulto', 'P. Neto Unidad', 'Precio Final Unitario']],
                 body: filas,
                 theme: 'striped',
                 headStyles: { fillColor: [30, 58, 138] },
-                columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:35}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
-                margin: { top: 130, left: 35, right: 35, bottom: 65 }, // Aumentamos el margen inferior (bottom) a 65
+                columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:45}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
+                margin: { top: 130, left: 35, right: 35 },
                 didDrawPage: function(data) {
-                    // --- CABECERA ---
                     try { doc.addImage(document.getElementById('logoBanner'), 'JPEG', 35, 20, 240, 72); } catch (e) {}
                     doc.setFontSize(10); doc.setTextColor(71, 85, 105);
-                    doc.setFont("helvetica", "normal");
-                    
-                    // Aquí imprimimos la MARCA en lugar del Proveedor
-                    doc.text(`Marcas: ${marca}`, 330, 50);
-                    
+                    doc.text(`Proveedor: ${prov}`, 330, 50);
                     const h = new Date(); doc.text(`Fecha: ${h.getDate()}/${h.getMonth()+1}/${h.getFullYear()}`, 330, 65);
                     doc.text(`Página ${data.pageNumber}`, 330, 80);
                     doc.line(35, 105, 560, 105);
-
-                    // --- PIE DE PÁGINA (Se ejecuta en todas las páginas) ---
-                    doc.setFontSize(9);
-                    doc.setFont("helvetica", "italic");
-                    doc.setTextColor(100, 100, 100);
-                    doc.text("Consulta con tu vendedor por acciones comerciales.", 35, pageHeight - 40);
-                    doc.text("Los precios estan sujeto a cambios sin previo aviso.", 35, pageHeight - 25);
                 }
             });
             return doc;
         }
+
         document.getElementById('btnExportExcel').addEventListener('click', () => {
             if (datosFiltrados.length === 0) return;
             const blob = new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel;charset=utf-8;' });
