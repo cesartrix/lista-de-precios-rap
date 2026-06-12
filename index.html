@@ -221,7 +221,9 @@
 
         function poblarProveedores(datos) {
             const datalist = document.getElementById('listaProveedores');
-            const proveedores = [...new Set(datos.map(item => item['Atributo 1']))].filter(p => p).sort();
+            const proveedores = [...new Set(datos.map(item => item['Atributo 1']))]
+                .filter(p => p && p.trim() !== '' && p.toUpperCase() !== 'SIN PROVEEDOR')
+                .sort();
             
             datalist.innerHTML = '';
             proveedores.forEach(prov => {
@@ -323,57 +325,64 @@
             return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(v);
         }
 
-        function generarStringExcel() {
+        function generarWorkbookExcel() {
             // Obtenemos la marca elegida o mostramos un texto por defecto
             const marca = document.getElementById('marcaInput').value || "Todas las Marcas";
             const hoy = new Date();
             const fechaStr = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
-            const logoUrl = document.getElementById('logoBanner').src;
 
-            let html = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="UTF-8"><style>
-                body { font-family: sans-serif; }
-                table { border-collapse: collapse; }
-                th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; border: 1px solid #0f172a; padding: 6px; text-align: center; }
-                td { border: 1px solid #cbd5e1; padding: 5px; font-size: 10pt; }
-                .row-marca { background-color: #f1f5f9; font-weight: bold; color: #1e3a8a; }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                .font-mono { font-family: monospace; }
-            </style></head>
-            <body>
-                <table>
-                    <tr>
-                        <td colspan="3" style="border:none; height:70px; valign:middle;"><img src="${logoUrl}" width="220" height="65"></td>
-                        <td colspan="4" style="border:none; valign:middle;">
-                            <span style="font-size:16pt; font-weight:bold; color:#1e3a8a;">REPORTE DE PRECIOS</span><br>
-                            <span><strong>Marcas:</strong> ${marca}</span><br>
-                            <span><strong>Fecha:</strong> ${fechaStr}</span>
-                        </td>
-                    </tr>
-                    <tr style="height:15px;"><td colspan="7" style="border:none;"></td></tr>
-                </table>
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 140px;">Marca</th><th style="width: 90px;">Código Art.</th><th style="width: 120px;">Cod. Barra</th><th style="width: 300px;">Descripción del Artículo</th><th style="width: 110px;">Unidades x Bulto</th><th style="width: 120px;">P. Neto Unidad</th><th style="width: 120px;">P. Final Unitario</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
+            const aoa = [];
+            aoa.push(['REPORTE DE PRECIOS']);
+            aoa.push([`Marcas: ${marca}`]);
+            aoa.push([`Fecha: ${fechaStr}`]);
+            aoa.push([]);
+            aoa.push(['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'Unidades x Bulto', 'P. Neto Unidad', 'P. Final Unitario']);
+
+            const filaEncabezado = aoa.length - 1; // índice (0-based) de la fila de encabezados
+
             datosFiltrados.forEach(p => {
-                html += `<tr>
-                    <td class="row-marca">${p['Marca']}</td><td class="font-mono text-center">${p['Artículo']}</td><td class="font-mono text-center" style="mso-number-format:'\\@';">${p['Cod.Barra']}</td><td>${p['Descripcion_Articulo']}</td><td class="text-center">${p['Unidades']}</td><td class="text-right">${formatearMoneda(p['Precio Neto Unidad'])}</td><td class="text-right" style="font-weight:bold; color:#1e3a8a;">${formatearMoneda(p['P.Unitario Final'])}</td>
-                </tr>`;
+                aoa.push([
+                    p['Marca'],
+                    p['Artículo'],
+                    p['Cod.Barra'],
+                    p['Descripcion_Articulo'],
+                    p['Unidades'],
+                    Number((p['Precio Neto Unidad'] || 0).toFixed(2)),
+                    Number((p['P.Unitario Final'] || 0).toFixed(2))
+                ]);
             });
-            html += `</tbody>
-                    <tfoot>
-                        <tr><td colspan="7" style="border:none; height:20px;"></td></tr>
-                        <tr><td colspan="7" style="border:none; text-align:center; font-weight:bold; font-size:11pt; color:#1e3a8a;">Consulta con tu vendedor por acciones comerciales.</td></tr>
-                        <tr><td colspan="7" style="border:none; text-align:center; font-weight:bold; font-size:11pt; color:#1e3a8a;">Los precios están sujetos a cambios sin previo aviso.</td></tr>
-                    </tfoot>
-                </table></body></html>`;
-            return html;
+
+            aoa.push([]);
+            aoa.push(['Consulta con tu vendedor por acciones comerciales.']);
+            aoa.push(['Los precios están sujetos a cambios sin previo aviso.']);
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+            // Anchos de columna
+            ws['!cols'] = [
+                { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 45 }, { wch: 14 }, { wch: 14 }, { wch: 16 }
+            ];
+
+            // Combinar celdas de título / pie
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
+                { s: { r: aoa.length - 2, c: 0 }, e: { r: aoa.length - 2, c: 6 } },
+                { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: 6 } }
+            ];
+
+            // Formato moneda para las columnas de precios
+            for (let r = filaEncabezado + 1; r <= filaEncabezado + datosFiltrados.length; r++) {
+                ['F', 'G'].forEach(col => {
+                    const cellRef = `${col}${r + 1}`;
+                    if (ws[cellRef]) ws[cellRef].z = '"$"#,##0.00';
+                });
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Precios");
+            return wb;
         }
 
         function generarDocumentoPdf() {
@@ -417,13 +426,10 @@
 
         document.getElementById('btnExportExcel').addEventListener('click', () => {
             if (datosFiltrados.length === 0) return;
-            const blob = new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
+            const wb = generarWorkbookExcel();
             // El nombre del archivo ahora basa su nombre en el filtro (para que no diga vacío si solo filtras marca)
             const nombreArchivo = (document.getElementById('marcaInput').value || document.getElementById('proveedorInput').value || "Todas").replace(/[^a-z0-9]/gi, '_');
-            a.download = `Precios_${nombreArchivo}.xls`;
-            a.click();
+            XLSX.writeFile(wb, `Precios_${nombreArchivo}.xlsx`);
         });
 
         document.getElementById('btnExportPdf').addEventListener('click', () => {
@@ -434,10 +440,28 @@
 
         document.getElementById('btnShareExcel').addEventListener('click', async () => {
             if (datosFiltrados.length === 0) return;
-            if (!navigator.share) { alert("Compartir directo no compatible, usá descargar."); return; }
             const nombreArchivo = (document.getElementById('marcaInput').value || document.getElementById('proveedorInput').value || "Todas").replace(/[^a-z0-9]/gi, '_');
-            const archivo = new File([new Blob([generarStringExcel()], { type: 'application/vnd.ms-excel' })], `Precios_${nombreArchivo}.xls`, { type: 'application/vnd.ms-excel' });
-            try { await navigator.share({ files: [archivo], title: 'Precios', text: 'Catálogo de Precios.' }); } catch (e) {}
+            const wb = generarWorkbookExcel();
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const archivo = new File(
+                [wbout],
+                `Precios_${nombreArchivo}.xlsx`,
+                { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+            );
+
+            if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+                try {
+                    await navigator.share({ files: [archivo], title: 'Precios', text: 'Catálogo de Precios.' });
+                } catch (e) {
+                    if (e.name !== 'AbortError') {
+                        alert('No se pudo compartir el archivo. Se descargará en su lugar.');
+                        XLSX.writeFile(wb, `Precios_${nombreArchivo}.xlsx`);
+                    }
+                }
+            } else {
+                alert("Este dispositivo no admite compartir archivos directamente. Se descargará el Excel.");
+                XLSX.writeFile(wb, `Precios_${nombreArchivo}.xlsx`);
+            }
         });
 
         document.getElementById('btnSharePdf').addEventListener('click', async () => {
