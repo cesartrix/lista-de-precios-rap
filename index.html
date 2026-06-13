@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buscador de Precios por Proveedor y Marca</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -331,54 +331,111 @@
             const hoy = new Date();
             const fechaStr = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
 
+            const COLS = 6;
             const aoa = [];
-            aoa.push(['REPORTE DE PRECIOS']);
-            aoa.push([`Marcas: ${marca}`]);
-            aoa.push([`Fecha: ${fechaStr}`]);
-            aoa.push([]);
-            aoa.push(['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'Unidades x Bulto', 'P. Neto Unidad', 'P. Final Unitario']);
+            const merges = [];
 
-            const filaEncabezado = aoa.length - 1; // índice (0-based) de la fila de encabezados
+            const bordeFino = {
+                top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+                right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+            };
 
+            const estiloTitulo = { font: { bold: true, sz: 14, color: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' } };
+            const estiloSubtitulo = { font: { bold: true, sz: 10, color: { rgb: '475569' } }, alignment: { horizontal: 'center' } };
+            const estiloHeader = {
+                font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+                fill: { fgColor: { rgb: '1E3A8A' } },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                border: bordeFino
+            };
+            const estiloMarca = {
+                font: { bold: true, italic: true, sz: 11, color: { rgb: 'FF0000' } },
+                alignment: { horizontal: 'center' }
+            };
+            const estiloLeyenda = { font: { bold: true, color: { rgb: '1E3A8A' } }, alignment: { horizontal: 'center' } };
+
+            const filaFila = (vals, estilos) => ({ vals, estilos });
+            const filas = [];
+
+            // --- Título y datos generales ---
+            filas.push(filaFila(['REPORTE DE PRECIOS', '', '', '', '', ''], [estiloTitulo]));
+            filas.push(filaFila([`Marcas: ${marca}`, '', '', '', '', ''], [estiloSubtitulo]));
+            filas.push(filaFila([`Fecha: ${fechaStr}`, '', '', '', '', ''], [estiloSubtitulo]));
+            filas.push(filaFila(['', '', '', '', '', ''], []));
+
+            // --- Encabezado de la tabla ---
+            filas.push(filaFila(
+                ['Codigo Sistema', 'Codigo de Barras', 'PRODUCTO', 'Unid x caja', 'NETO', 'FINAL'],
+                [estiloHeader, estiloHeader, estiloHeader, estiloHeader, estiloHeader, estiloHeader]
+            ));
+
+            // --- Filas de productos agrupadas por marca ---
+            let marcaActual = null;
             datosFiltrados.forEach(p => {
-                aoa.push([
-                    p['Marca'],
-                    p['Artículo'],
-                    p['Cod.Barra'],
-                    p['Descripcion_Articulo'],
-                    p['Unidades'],
-                    Number((p['Precio Neto Unidad'] || 0).toFixed(2)),
-                    Number((p['P.Unitario Final'] || 0).toFixed(2))
-                ]);
+                if (p['Marca'] !== marcaActual) {
+                    if (marcaActual !== null) {
+                        // Fila de espacio entre grupos de marca
+                        filas.push(filaFila(['', '', '', '', '', ''], []));
+                    }
+                    marcaActual = p['Marca'];
+                    filas.push(filaFila([marcaActual, '', '', '', '', ''], [estiloMarca]));
+                }
+
+                const estiloCodigo = { font: { sz: 9 }, alignment: { horizontal: 'center' }, border: bordeFino };
+                const estiloProducto = { font: { sz: 9, italic: true }, alignment: { horizontal: 'left', wrapText: true }, border: bordeFino };
+                const estiloUnidades = { font: { sz: 9, bold: true }, alignment: { horizontal: 'center' }, border: bordeFino };
+                const estiloNeto = { font: { sz: 9, color: { rgb: '1E3A8A' } }, alignment: { horizontal: 'right' }, border: bordeFino, numFmt: '"$ "#,##0.000' };
+                const estiloFinal = { font: { sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'right' }, border: bordeFino, numFmt: '"$ "#,##0.00' };
+
+                filas.push(filaFila(
+                    [
+                        p['Artículo'],
+                        p['Cod.Barra'] || '',
+                        p['Descripcion_Articulo'],
+                        p['Unidades'],
+                        Number((p['Precio Neto Unidad'] || 0).toFixed(3)),
+                        Number((p['P.Unitario Final'] || 0).toFixed(2))
+                    ],
+                    [estiloCodigo, estiloCodigo, estiloProducto, estiloUnidades, estiloNeto, estiloFinal]
+                ));
             });
 
-            aoa.push([]);
-            aoa.push(['Consulta con tu vendedor por acciones comerciales.']);
-            aoa.push(['Los precios están sujetos a cambios sin previo aviso.']);
+            // --- Leyendas finales ---
+            filas.push(filaFila(['', '', '', '', '', ''], []));
+            filas.push(filaFila(['Consulta con tu vendedor por acciones comerciales.', '', '', '', '', ''], [estiloLeyenda]));
+            filas.push(filaFila(['Los precios están sujetos a cambios sin previo aviso.', '', '', '', '', ''], [estiloLeyenda]));
+
+            // --- Construcción de la hoja ---
+            filas.forEach(f => aoa.push(f.vals));
 
             const ws = XLSX.utils.aoa_to_sheet(aoa);
 
             // Anchos de columna
             ws['!cols'] = [
-                { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 45 }, { wch: 14 }, { wch: 14 }, { wch: 16 }
+                { wch: 14 }, { wch: 16 }, { wch: 45 }, { wch: 12 }, { wch: 14 }, { wch: 14 }
             ];
 
-            // Combinar celdas de título / pie
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
-                { s: { r: aoa.length - 2, c: 0 }, e: { r: aoa.length - 2, c: 6 } },
-                { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: 6 } }
-            ];
+            // Combinar celdas que ocupan toda la fila (título, marca, leyendas)
+            filas.forEach((f, r) => {
+                const ocupaTodaLaFila = f.estilos.length === 1 && f.vals.slice(1).every(v => v === '');
+                if (ocupaTodaLaFila && f.vals[0] !== '') {
+                    merges.push({ s: { r, c: 0 }, e: { r, c: COLS - 1 } });
+                }
+            });
+            ws['!merges'] = merges;
 
-            // Formato moneda para las columnas de precios
-            for (let r = filaEncabezado + 1; r <= filaEncabezado + datosFiltrados.length; r++) {
-                ['F', 'G'].forEach(col => {
-                    const cellRef = `${col}${r + 1}`;
-                    if (ws[cellRef]) ws[cellRef].z = '"$"#,##0.00';
+            // Aplicar estilos y formatos numéricos
+            filas.forEach((f, r) => {
+                f.estilos.forEach((estilo, c) => {
+                    const cellRef = XLSX.utils.encode_cell({ r, c });
+                    if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
+                    const { numFmt, ...estiloSinFormato } = estilo;
+                    ws[cellRef].s = estiloSinFormato;
+                    if (numFmt) ws[cellRef].z = numFmt;
                 });
-            }
+            });
 
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Precios");
