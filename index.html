@@ -447,15 +447,28 @@
             const doc = new jsPDF('p', 'pt', 'a4');
             // Cambiamos a Marcas
             const marca = document.getElementById('marcaInput').value || "Todas las Marcas";
-            const filas = datosFiltrados.map(p => [p['Marca'], p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Neto Unidad']), formatearMoneda(p['P.Unitario Final'])]);
+            const filas = datosFiltrados.map(p => {
+                // Suprimir texto entre paréntesis de la Marca
+                const marcaLimpia = (p['Marca'] || '').replace(/\s*\(.*?\)/g, '').trim();
+                return [marcaLimpia, p['Artículo'], p['Cod.Barra'], p['Descripcion_Articulo'], p['Unidades'], formatearMoneda(p['Precio Neto Unidad']), formatearMoneda(p['P.Unitario Final'])];
+            });
 
             doc.autoTable({
                 startY: 130,
-                head: [['Marca', 'Código Art.', 'Cod. Barra', 'Descripción del Artículo', 'U. x Bulto', 'P. Neto Unidad', 'Precio Final Unitario']],
+                head: [['Marca', 'Cód. Art.', 'Cod. Barra', 'Descripción del Artículo', 'U.xBulto', 'P. Neto', 'P. Final']],
                 body: filas,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 58, 138] },
-                columnStyles: { 0: {cellWidth:80}, 1: {cellWidth:55}, 2: {cellWidth:75}, 3: {cellWidth:'auto'}, 4: {halign:'center', cellWidth:45}, 5: {halign:'right', cellWidth:70}, 6: {halign:'right', cellWidth:80} },
+                headStyles: { fillColor: [30, 58, 138], fontSize: 7.5, halign: 'center' },
+                styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak' },
+                columnStyles: {
+                    0: { cellWidth: 65 },
+                    1: { cellWidth: 42, halign: 'center' },
+                    2: { cellWidth: 80, halign: 'center' },
+                    3: { cellWidth: 'auto' },
+                    4: { cellWidth: 32, halign: 'center' },
+                    5: { cellWidth: 58, halign: 'right' },
+                    6: { cellWidth: 58, halign: 'right' }
+                },
                 // Añadimos margen bottom para dar espacio a las leyendas y que la tabla no se superponga
                 margin: { top: 130, left: 35, right: 35, bottom: 65 }, 
                 didDrawPage: function(data) {
