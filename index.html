@@ -202,6 +202,12 @@
                         }
 
                         if(datosCompletos.length > 0){
+                            // Excluir artículos que no tengan ni proveedor ni marca
+                            datosCompletos = datosCompletos.filter(item => {
+                                const tieneProv = item['Atributo 1'] && item['Atributo 1'] !== 'SIN PROVEEDOR';
+                                const tieneMarca = item['Marca'] && item['Marca'].trim() !== '';
+                                return tieneProv || tieneMarca;
+                            });
                             datosFiltrados = [...datosCompletos];
                             poblarProveedores(datosCompletos);
                             document.getElementById('exportButtonsContainer').classList.remove('opacity-50', 'pointer-events-none');
